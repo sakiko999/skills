@@ -1,0 +1,14 @@
+{
+  "name": "sakiko999-skills",
+  "description": "个人 Claude Code 技能集合：Ramda 函数式编程 master 级参考（TypeScript）",
+  "owner": {
+    "name": "sakiko999"
+  },
+  "plugins": [
+    {
+      "name": "ramda-master",
+      "source": "./plugins/ramda-master",
+      "description": "Master Ramda for TypeScript — 编写正确、地道、类型安全的 Ramda 代码"
+    }
+  ]
+}

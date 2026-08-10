@@ -1,0 +1,9 @@
+{
+  "name": "ramda-master",
+  "description": "Master Ramda for TypeScript — 编写正确、地道、类型安全的 Ramda 代码",
+  "version": "1.0.0",
+  "author": {
+    "name": "sakiko999"
+  },
+  "repository": "https://github.com/sakiko999/skills"
+}

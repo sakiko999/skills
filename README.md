@@ -1,22 +1,38 @@
 # Claude Code Skills
 
-个人 Claude Code 技能（Skill）集合仓库。每个 skill 是一个独立目录，内含 `SKILL.md` 及 `references/` 参考文档。
+个人 Claude Code 技能（Skill）集合仓库，以 **Claude Code 插件 marketplace** 形式分发。
 
-## 使用方法
+## 安装（marketplace 方式，推荐）
 
-将需要的 skill 目录克隆或复制到你的 Claude Code skills 目录：
+添加本仓库为插件市场，然后安装插件：
 
 ```bash
-# 全局 skills 目录
-mkdir -p ~/.claude/skills
-cp -r ramda-master ~/.claude/skills/
+# 在 Claude Code 中执行
+/plugin marketplace add sakiko999/skills
+/plugin install ramda-master@sakiko999-skills
 ```
 
-然后在 Claude Code 中即可通过 `/ramda-master` 调用该 skill。
+装好后通过 `/ramda-master:ramda-master` 调用该 skill（插件 skill 带命名空间前缀），或在对话中直接提到 Ramda 让 Claude 自动调用。
+
+更新插件：
+
+```bash
+/plugin marketplace update
+/plugin update
+```
+
+## 备选：直接复制 skill 目录
+
+```bash
+mkdir -p ~/.claude/skills
+cp -r plugins/ramda-master/skills/ramda-master ~/.claude/skills/
+```
+
+然后在 Claude Code 中通过 `/ramda-master` 调用。
 
 ## 技能列表
 
-### [ramda-master](ramda-master/)
+### [ramda-master](plugins/ramda-master/skills/ramda-master/)
 
 > Master Ramda for TypeScript — 编写正确、地道、类型安全的 Ramda 代码。
 
@@ -32,4 +48,4 @@ cp -r ramda-master ~/.claude/skills/
 ## 贡献
 
 - 每个 skill 遵循 Claude Code skill 规范：目录含 `SKILL.md`（YAML frontmatter 带 `name` 和 `description`）+ 按需的 `references/`。
-- 新增 skill 时在本 README 的列表中加入条目。
+- 新增 skill 时在 `plugins/<name>/` 下创建插件目录（含 `.claude-plugin/plugin.json` 与 `skills/<name>/`），并在 `marketplace.json` 与 README 中登记。
