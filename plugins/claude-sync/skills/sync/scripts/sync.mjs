@@ -173,7 +173,9 @@ function pull() {
       const rendered = render(tpl, keys, prev)
       if (JSON.stringify(rendered) !== JSON.stringify(prev)) {
         writeJSON(LOCAL, rendered)
-        console.log('claude-sync: 今日拉取完成，settings.json 已更新')
+        console.log(`claude-sync: 今日拉取完成，settings.json 已更新（${new Date().toLocaleString()}）`)
+      } else {
+        console.log(`claude-sync: 今日拉取完成，远端无新变更（${new Date().toLocaleString()}）`)
       }
     }
     fs.writeFileSync(STAMP, '')
