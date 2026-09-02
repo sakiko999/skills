@@ -12,6 +12,7 @@ import os from 'node:os'
 const DIR = process.env.CLAUDE_SYNC_DIR || path.join(os.homedir(), '.claude')
 const TPL = path.join(DIR, 'settings.template.json')
 const LOCAL = path.join(DIR, 'settings.json')
+const STAMP = path.join(DIR, '.sync-last-pull') // 每日自动拉取的限频戳
 
 // 密钥/机器相关键：不入库，各机器本地保留。点路径；可在 template 的 _localOnly 里增删。
 const DEFAULT_LOCAL_KEYS = [
@@ -28,6 +29,7 @@ settings.local.json
 *.log
 .last-cleanup
 .ponytail-*
+.sync-last-pull
 cache/
 file-history/
 shell-snapshots/
@@ -155,6 +157,30 @@ function adopt(url) {
   console.log(git('status', '--short') || '（工作区干净）')
 }
 
+// 每日一次的自动拉取（SessionStart hook 调用）：pull + 渲染，不 commit 不 push。
+// 任何失败只打一行不抛错——hook 不能打断会话启动。
+function pull() {
+  try {
+    let last = 0
+    try { last = fs.statSync(STAMP).mtimeMs } catch {}
+    if (Date.now() - last < 86400e3) return
+    if (fs.existsSync(path.join(DIR, '.git')) && tryGit('remote', 'get-url', 'origin') && tryGit('ls-remote', 'origin', 'main')) {
+      git('pull', '--rebase', 'origin', 'main')
+      const tpl = readJSON(TPL)
+      const keys = tpl._localOnly ?? DEFAULT_LOCAL_KEYS
+      const prev = fs.existsSync(LOCAL) ? readJSON(LOCAL) : {}
+      const rendered = render(tpl, keys, prev)
+      if (JSON.stringify(rendered) !== JSON.stringify(prev)) {
+        writeJSON(LOCAL, rendered)
+        console.log('claude-sync: 今日拉取完成，settings.json 已更新')
+      }
+    }
+    fs.writeFileSync(STAMP, '')
+  } catch (e) {
+    console.error(`claude-sync pull 跳过: ${String(e.stderr || e.message).split('\n')[0].trim()}`)
+  }
+}
+
 function sync() {
   if (!fs.existsSync(path.join(DIR, '.git'))) die('未初始化，先: node sync.mjs init [repo-url]')
   if (!tryGit('remote', 'get-url', 'origin')) die('未关联远端仓库')
@@ -199,7 +225,8 @@ try {
   if (cmd === 'init') init(rest[0])
   else if (cmd === 'adopt') adopt(rest[0])
   else if (cmd === 'sync') sync()
-  else die(`用法: node sync.mjs init [repo-url] | adopt <repo-url> | sync\n  CLAUDE_SYNC_DIR 可覆盖目标目录（默认 ~/.claude）`)
+  else if (cmd === 'pull') pull()
+  else die(`用法: node sync.mjs init [repo-url] | adopt <repo-url> | sync | pull\n  pull = 每日限频的拉取（SessionStart hook 用）；CLAUDE_SYNC_DIR 可覆盖目标目录（默认 ~/.claude）`)
 } catch (e) {
   die(e.message)
 }

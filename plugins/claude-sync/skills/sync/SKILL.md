@@ -13,19 +13,23 @@ description: 用 GitHub 私有仓库同步全局 ~/.claude 配置（CLAUDE.md、
 
 ## 首次初始化（当前机器）
 
+**必须先向用户展示影响范围并等确认，再执行 init**——用户可能不清楚哪些内容会被推上 GitHub：
+
+- 将入库：CLAUDE.md、settings 模板（密钥剔除）、memory/、plans/、插件清单、context-recall/
+- 永不入库：`.credentials.json`、`settings.json` 中的 `_localOnly` 密钥键、会话转录 projects/、各类缓存与运行状态
+- 远端是**私有** GitHub 仓库，仓库内容 ≈ 当前 `.claude` 配置快照
+
+确认后：
+
 1. `node "$CLAUDE_PLUGIN_ROOT/skills/sync/scripts/sync.mjs" init`
 2. 若尚无远端仓库：`gh repo create dotclaude --private`，然后
    `git -C ~/.claude remote add origin https://github.com/<user>/dotclaude.git`
 3. `node "$CLAUDE_PLUGIN_ROOT/skills/sync/scripts/sync.mjs" sync`（首次推送）
 
-## 日常同步
+## 自动化时机
 
-```bash
-node "$CLAUDE_PLUGIN_ROOT/skills/sync/scripts/sync.mjs" sync
-```
-
-单向执行：回流本机改动 → commit → pull --rebase → 渲染回 settings.json → push。
-幂等，任意时机可跑。
+- **拉取**：SessionStart hook 自动跑 `pull` 子命令（pull + 渲染），内置 24h 限频（`.sync-last-pull` 戳），每天最多一次；失败静默不打断会话。
+- **推送**：始终手动——用户说"同步配置"时执行 `sync`。不要自动 push（半成品状态、多机冲突）。
 
 ## 新机器导入
 
@@ -50,3 +54,9 @@ node "$CLAUDE_PLUGIN_ROOT/skills/sync/scripts/sync.mjs" adopt https://github.com
 - **不想同步某个键**：改 template 顶层 `_localOnly` 数组（点路径，如 `env.FOO`；手改会被保留），
   跑一次 sync 后该键改为本地保留、不再入库。两机同时改 `_localOnly` 会冲突，手动解一次即可。
 - **想同步会话转录**（projects/，跨机 /resume）：删 `.gitignore` 中 `projects/` 行，注意仓库体积增长。
+
+## 卸载行为
+
+卸载插件只移除 skill 与 hook（自动拉取随之停止）；`~/.claude` 内的 `.git`、`.gitignore`、
+`settings.template.json` 及远端仓库**原样保留**（数据与工具分离，已同步内容不受影响）。
+彻底清除：删 `~/.claude/.git`（工作区文件保留）与远端仓库；`settings.template.json` 可删，settings.json 不依赖它运行。
