@@ -45,11 +45,8 @@ history.jsonl
 context-recall/
 statsig/
 todos/
-# 会话转录不同步，但保留各项目的 memory/（跨机记忆）
-projects/*
-!projects/*/
-projects/*/*
-!projects/*/memory/
+# 会话转录与项目级 memory（slug 按本机路径生成，跨机路径不同则读不到）均不同步
+projects/
 # 插件本体与目录缓存可由 installed_plugins.json 重建，仅同步清单与用户数据
 plugins/cache/
 plugins/marketplaces/

@@ -17,8 +17,8 @@ description: 用 GitHub 私有仓库同步全局 ~/.claude 配置（CLAUDE.md、
 
 **必须先向用户展示影响范围并等确认，再执行 init**——用户可能不清楚哪些内容会被推上 GitHub：
 
-- 将入库：CLAUDE.md、settings 模板（密钥剔除）、各项目 memory/、plans/、插件清单
-- 永不入库：`.credentials.json`、`settings.json` 中的 `_localOnly` 密钥键、会话转录 projects/、各类缓存与运行状态
+- 将入库：CLAUDE.md、settings 模板（密钥剔除）、plans/、插件清单
+- 永不入库：`.credentials.json`、`settings.json` 中的 `_localOnly` 密钥键、`projects/`（会话转录与项目级 memory——slug 按本机路径生成，跨机读不到）、各类缓存与运行状态
 - 远端是**私有** GitHub 仓库，仓库内容 ≈ 当前 `.claude` 配置快照
 
 确认后：
