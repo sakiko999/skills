@@ -42,6 +42,7 @@ jobs/
 tasks/
 sessions/
 history.jsonl
+context-recall/
 statsig/
 todos/
 # 会话转录（跨机 /resume 需要时删除下一行，注意仓库体积）
