@@ -10,6 +10,7 @@
 # 在 Claude Code 中执行
 /plugin marketplace add sakiko999/skills
 /plugin install ramda-master@sakiko999-skills
+/plugin install cf-project@sakiko999-skills
 ```
 
 装好后通过 `/ramda-master:ramda-master` 调用该 skill（插件 skill 带命名空间前缀），或在对话中直接提到 Ramda 让 Claude 自动调用。
@@ -26,6 +27,7 @@
 ```bash
 mkdir -p ~/.claude/skills
 cp -r plugins/ramda-master/skills/ramda-master ~/.claude/skills/
+cp -r plugins/cf-project/skills/cf-project ~/.claude/skills/
 ```
 
 然后在 Claude Code 中通过 `/ramda-master` 调用。
@@ -49,3 +51,12 @@ cp -r plugins/ramda-master/skills/ramda-master ~/.claude/skills/
 
 - 每个 skill 遵循 Claude Code skill 规范：目录含 `SKILL.md`（YAML frontmatter 带 `name` 和 `description`）+ 按需的 `references/`。
 - 新增 skill 时在 `plugins/<name>/` 下创建插件目录（含 `.claude-plugin/plugin.json` 与 `skills/<name>/`），并在 `marketplace.json` 与 README 中登记。
+
+### [cf-project](plugins/cf-project/skills/cf-project/)
+
+> 按需把 Cloudflare 开发环境激活/停用到当前项目：项目级启用 cloudflare 插件、token 认证的 CF MCP 服务器写入项目根 `.mcp.json`，幂等执行且不破坏已有配置。
+
+- **SKILL.md**：触发条件、激活/停用流程、红线（只合并不覆盖、损坏 JSON 停手、必须重启会话生效）
+- **scripts/activate_cf.py**：激活（合并 4 个 CF MCP 服务器、项目级启用插件、默认预写 OAuth 屏蔽名单、检查 token）
+- **scripts/deactivate_cf.py**：停用（精确逆操作，同名自有服务器智能保留）
+- **assets/cloudflare-mcp.json**：CF MCP 模板（唯一事实源，token 走 `${CLOUDFLARE_API_TOKEN}` 环境变量）

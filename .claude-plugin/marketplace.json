@@ -1,6 +1,6 @@
 {
   "name": "sakiko999-skills",
-  "description": "个人 Claude Code 技能集合：Ramda 函数式编程 master 级参考（TypeScript）",
+  "description": "个人 Claude Code 技能集合：Ramda 函数式编程参考（TypeScript）、Cloudflare 项目环境按需激活/停用",
   "owner": {
     "name": "sakiko999"
   },
@@ -9,6 +9,11 @@
       "name": "ramda-master",
       "source": "./plugins/ramda-master",
       "description": "Master Ramda for TypeScript — 编写正确、地道、类型安全的 Ramda 代码"
+    },
+    {
+      "name": "cf-project",
+      "source": "./plugins/cf-project",
+      "description": "按需激活/停用项目的 Cloudflare 环境：项目级启用 CF 插件 + token 认证 CF MCP 服务器，幂等不破坏已有配置"
     }
   ]
 }
