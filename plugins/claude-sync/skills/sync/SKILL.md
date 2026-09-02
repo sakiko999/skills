@@ -11,11 +11,13 @@ description: 用 GitHub 私有仓库同步全局 ~/.claude 配置（CLAUDE.md、
 `~/.claude/settings.json` = template + 本机密钥（渲染产物，被 gitignore）。
 `_localOnly` 数组（template 顶层）声明不入库的点路径键。
 
+**范围外**：`~/.claude.json`（全局 MCP 服务器、项目列表等 HOME 根下文件）不归本插件管，跨机需另行处理。
+
 ## 首次初始化（当前机器）
 
 **必须先向用户展示影响范围并等确认，再执行 init**——用户可能不清楚哪些内容会被推上 GitHub：
 
-- 将入库：CLAUDE.md、settings 模板（密钥剔除）、memory/、plans/、插件清单、context-recall/
+- 将入库：CLAUDE.md、settings 模板（密钥剔除）、各项目 memory/、plans/、插件清单
 - 永不入库：`.credentials.json`、`settings.json` 中的 `_localOnly` 密钥键、会话转录 projects/、各类缓存与运行状态
 - 远端是**私有** GitHub 仓库，仓库内容 ≈ 当前 `.claude` 配置快照
 
@@ -47,9 +49,10 @@ node "$CLAUDE_PLUGIN_ROOT/skills/sync/scripts/sync.mjs" adopt https://github.com
 
 ## 故障处理
 
-- **template 冲突**（rebase 停止）：编辑 `~/.claude/settings.template.json` 解冲突 →
-  `git -C ~/.claude add -A && git -C ~/.claude rebase --continue` → 重跑 sync。
-  （仅此场景手改 template 才有意义）
+- **template 冲突**（rebase 停止）：编辑 `~/.claude/settings.template.json` 解冲突，**并把对方改动中
+  属于设置内容的键同步补进本机 `settings.json`**（否则下次 sync 的回流会用本机 settings.json 覆盖
+  template，丢掉解冲突时合并进来的改动）→ `git -C ~/.claude add -A && git -C ~/.claude rebase --continue`
+  → 重跑 sync。（仅此场景手改 template 才有意义）
 - **push 失败**：检查远端 repo 存在、token 有写权限。
 - **不想同步某个键**：改 template 顶层 `_localOnly` 数组（点路径，如 `env.FOO`；手改会被保留），
   跑一次 sync 后该键改为本地保留、不再入库。两机同时改 `_localOnly` 会冲突，手动解一次即可。

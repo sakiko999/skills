@@ -45,8 +45,11 @@ history.jsonl
 context-recall/
 statsig/
 todos/
-# 会话转录（跨机 /resume 需要时删除下一行，注意仓库体积）
-projects/
+# 会话转录不同步，但保留各项目的 memory/（跨机记忆）
+projects/*
+!projects/*/
+projects/*/*
+!projects/*/memory/
 # 插件本体与目录缓存可由 installed_plugins.json 重建，仅同步清单与用户数据
 plugins/cache/
 plugins/marketplaces/
@@ -147,7 +150,7 @@ function adopt(url) {
   tryGit('remote', 'remove', 'origin')
   git('remote', 'add', 'origin', url)
   git('fetch', 'origin', 'main')
-  git('reset', '--soft', 'FETCH_HEAD')
+  git('reset', 'FETCH_HEAD') // mixed：index=远端，避免老机器 re-adopt 时复活远端已删文件
   git('checkout', 'FETCH_HEAD', '--', '.')
   const tpl = readJSON(TPL)
   const keys = tpl._localOnly ?? DEFAULT_LOCAL_KEYS
@@ -178,6 +181,7 @@ function pull() {
     }
     fs.writeFileSync(STAMP, '')
   } catch (e) {
+    tryGit('rebase', '--abort') // 冲突时不把仓库留在 rebase 中间态
     console.error(`claude-sync pull 跳过: ${String(e.stderr || e.message).split('\n')[0].trim()}`)
   }
 }
