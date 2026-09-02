@@ -2,7 +2,7 @@
 """cf-project 停用脚本 —— 把 activate_cf.py 装进项目的 Cloudflare 环境拆掉(幂等,只做减法)。
 
 做三件事:
-  1. 从 <root>/.mcp.json 移除 4 个 CF MCP 服务器;若文件里除了 CF 什么都没有,连文件一起删除
+  1. 从 <root>/.mcp.json 移除 5 个 CF MCP 服务器;若文件里除了 CF 什么都没有,连文件一起删除
   2. 从 <root>/.claude/settings.local.json 与 settings.json 移除 CF 插件启用与 MCP 预批准;
      文件清理后为空对象则删除(连带的空 .claude/ 目录也一并移除)
   3. 从 $CLAUDE_CONFIG_DIR/.claude.json 的 projects[<root>].disabledMcpServers
@@ -26,12 +26,14 @@ from pathlib import Path
 PLUGIN_ID = "cloudflare@claude-plugins-official"
 CF_SERVERS = [
     "cloudflare-api",
+    "cloudflare-docs",
     "cloudflare-bindings",
     "cloudflare-builds",
     "cloudflare-observability",
 ]
 PLUGIN_MCP_BLOCK = [
     "plugin:cloudflare:cloudflare-api",
+    "plugin:cloudflare:cloudflare-docs",
     "plugin:cloudflare:cloudflare-bindings",
     "plugin:cloudflare:cloudflare-builds",
     "plugin:cloudflare:cloudflare-observability",
@@ -212,7 +214,7 @@ def main():
     print("⚠️  生效提醒:当前会话【不会】自动生效,必须重启 claude!")
     print("    (实测: /reload-plugins 不会重扫项目 .mcp.json,别白跑)")
     print("    1) 退出后重新运行 claude,上下文可用 claude --continue 找回")
-    print("    2) 重启后 /mcp 确认 4 个 cloudflare-* 服务器已消失")
+    print("    2) 重启后 /mcp 确认 5 个 cloudflare-* 服务器已消失")
     print("    3) .gitignore 里的 settings.local.json 忽略行有意保留(非 CF 专属)")
 
 

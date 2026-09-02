@@ -7,6 +7,13 @@
         "Authorization": "Bearer ${CLOUDFLARE_API_TOKEN}"
       }
     },
+    "cloudflare-docs": {
+      "type": "http",
+      "url": "https://docs.mcp.cloudflare.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${CLOUDFLARE_API_TOKEN}"
+      }
+    },
     "cloudflare-bindings": {
       "type": "http",
       "url": "https://bindings.mcp.cloudflare.com/mcp",

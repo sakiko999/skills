@@ -2,11 +2,11 @@
 """cf-project 激活脚本 —— 把 Cloudflare 开发环境按需装入一个项目(幂等,可重复运行)。
 
 默认做两件事:
-  1. 把 4 个 CF MCP 服务器(令牌认证,配置里没有明文密钥)合并进 <root>/.mcp.json
+  1. 把 5 个 CF MCP 服务器(令牌认证,配置里没有明文密钥)合并进 <root>/.mcp.json
   2. 在项目级启用 cloudflare 插件(覆盖全局的 disabled 状态),
      并预批准这些 MCP 服务器,避免首次连接时的确认弹窗
 
-默认行为:激活时自动把插件自带的 4 个 OAuth 版 MCP 服务器加入禁用名单
+默认行为:激活时自动把插件自带的 5 个 OAuth 版 MCP 服务器加入禁用名单
   (写入 $CLAUDE_CONFIG_DIR/.claude.json 的 projects[<root>].disabledMcpServers;
    若重启后 /mcp 里仍出现重复的 OAuth 服务器,说明该写法未被识别,
    请改在 /mcp 界面里手动关闭)。
@@ -14,7 +14,7 @@
 可选:
   --no-plugin          只写 .mcp.json,不启用插件(纯 token 方案,零 OAuth 风险)
   --settings project   把插件启用写进团队共享的 .claude/settings.json(默认个人 settings.local.json)
-  --keep-plugin-mcp    不写 OAuth 屏蔽名单(让插件的 4 个 OAuth MCP 正常加载)
+  --keep-plugin-mcp    不写 OAuth 屏蔽名单(让插件的 5 个 OAuth MCP 正常加载)
   --block-plugin-mcp   已默认开启,保留此参数仅为兼容
 
 MCP 模板来源(按序尝试): $CLAUDE_CONFIG_DIR/.mcp.json → 本技能内置 assets/cloudflare-mcp.json
@@ -29,6 +29,7 @@ from pathlib import Path
 PLUGIN_ID = "cloudflare@claude-plugins-official"
 CF_SERVERS = [
     "cloudflare-api",
+    "cloudflare-docs",
     "cloudflare-bindings",
     "cloudflare-builds",
     "cloudflare-observability",
@@ -37,6 +38,7 @@ CF_SERVERS = [
 # 否则会和项目 .mcp.json 里同名的 token 版服务器撞车,把有用的也禁掉。
 PLUGIN_MCP_BLOCK = [
     "plugin:cloudflare:cloudflare-api",
+    "plugin:cloudflare:cloudflare-docs",
     "plugin:cloudflare:cloudflare-bindings",
     "plugin:cloudflare:cloudflare-builds",
     "plugin:cloudflare:cloudflare-observability",
@@ -108,7 +110,7 @@ def step_mcp(root, servers):
         have[n] = servers[n]
     write_json(f, data)
     print(f"✓ {f}")
-    print(f"    新增: {', '.join(added) if added else '(无,四个服务器均已存在)'}")
+    print(f"    新增: {', '.join(added) if added else '(无,五个服务器均已存在)'}")
     others = sorted(set(have) - set(servers))
     if others:
         print(f"    保留原有: {', '.join(others)}")
@@ -183,7 +185,7 @@ def main():
     ap.add_argument("--settings", choices=["local", "project"], default="local",
                     help="插件启用写入 local(个人)还是 project(团队共享)settings")
     ap.add_argument("--keep-plugin-mcp", action="store_true",
-                    help="不屏蔽插件自带的 4 个 OAuth 版 MCP 服务器(默认屏蔽)")
+                    help="不屏蔽插件自带的 5 个 OAuth 版 MCP 服务器(默认屏蔽)")
     ap.add_argument("--block-plugin-mcp", action="store_true",
                     help="(已默认开启,仅为兼容保留)")
     a = ap.parse_args()
@@ -206,7 +208,7 @@ def main():
     print("⚠️  生效提醒:当前会话【不会】自动生效,必须重启 claude!")
     print("    (实测: /reload-plugins 不会加载新增的项目 .mcp.json,别白跑)")
     print("    1) 退出后重新运行 claude,上下文可用 claude --continue 找回")
-    print("    2) 重启后 /mcp 确认 4 个 cloudflare-* 已连接")
+    print("    2) 重启后 /mcp 确认 5 个 cloudflare-* 已连接")
     print("    3) 若 OAuth 版 CF 服务器仍重复出现,在 /mcp 里手动 disable 它们")
 
 

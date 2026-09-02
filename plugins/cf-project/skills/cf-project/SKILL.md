@@ -1,6 +1,6 @@
 ---
 name: cf-project
-description: 按需把 Cloudflare 开发环境激活到当前项目：项目级启用 cloudflare 插件、把 token 认证的 4 个 CF MCP 服务器合并进项目根的 .mcp.json，幂等执行且不破坏已有配置；也负责反向的停用移除。只要用户想在项目里做 Cloudflare 相关工作——Workers、Wrangler、R2、D1、KV、Queues、Durable Objects、部署到 workers.dev/pages、CF 日志/报错排查、cf 费用与配置——或明确要求"激活/启用/接入/配置 CF 或 cloudflare"，就应使用本技能（激活脚本）。用户要求"停用/移除/拆掉/清理 CF"时同样使用本技能（停用脚本）。即使用户没说出"激活/停用"这些字，只要意图是在这个项目里开展或撤出 Cloudflare 工作，就用它。不适用：纯问答式询问 CF 文档概念、不涉及在本地项目里实际操作 Cloudflare 的场景。
+description: 按需把 Cloudflare 开发环境激活到当前项目：项目级启用 cloudflare 插件、把 token 认证的 5 个 CF MCP 服务器合并进项目根的 .mcp.json，幂等执行且不破坏已有配置；也负责反向的停用移除。只要用户想在项目里做 Cloudflare 相关工作——Workers、Wrangler、R2、D1、KV、Queues、Durable Objects、部署到 workers.dev/pages、CF 日志/报错排查、cf 费用与配置——或明确要求"激活/启用/接入/配置 CF 或 cloudflare"，就应使用本技能（激活脚本）。用户要求"停用/移除/拆掉/清理 CF"时同样使用本技能（停用脚本）。即使用户没说出"激活/停用"这些字，只要意图是在这个项目里开展或撤出 Cloudflare 工作，就用它。不适用：纯问答式询问 CF 文档概念、不涉及在本地项目里实际操作 Cloudflare 的场景。
 ---
 
 # CF 项目激活（cf-project）
@@ -24,7 +24,7 @@ description: 按需把 Cloudflare 开发环境激活到当前项目：项目级�
 
 3. **检查脚本输出**：确认 `.mcp.json` 与 settings 文件写入成功、原有服务器被保留、`CLOUDFLARE_API_TOKEN` 状态为就绪。若脚本报"不是合法 JSON"，那是项目已有配置损坏——停下来请用户手工修复，绝不要擅自重建覆盖。同时核对输出首行的 `项目根:` 确实是用户所指的项目（无参运行时脚本会回退到 git 根或当前目录），不一致立即停下重跑。
 
-4. **醒目转达生效方式（红线，见下）**：配置只写盘，当前会话不会自动生效。**必须重启 claude**——实测 `/reload-plugins` 只热载插件/skills/agents，不会重扫项目 `.mcp.json`，让用户跑它是浪费力气。提示用户：重启后上下文用 `claude --continue` 找回，再用 `/mcp` 确认 4 个 `cloudflare-*` 已连接。
+4. **醒目转达生效方式（红线，见下）**：配置只写盘，当前会话不会自动生效。**必须重启 claude**——实测 `/reload-plugins` 只热载插件/skills/agents，不会重扫项目 `.mcp.json`，让用户跑它是浪费力气。提示用户：重启后上下文用 `claude --continue` 找回，再用 `/mcp` 确认 5 个 `cloudflare-*` 已连接。
 
 ## 停用（反向操作）
 
@@ -36,7 +36,7 @@ python3 <本技能目录>/scripts/deactivate_cf.py <项目根目录>
 
 它是激活的精确逆操作，同样幂等、只做减法：
 
-- 从 `.mcp.json` 移除 4 个 CF 服务器；若文件里除了 CF 什么都没有，连文件一起删除，`my-api` 之类的其他服务器永远保留
+- 从 `.mcp.json` 移除 5 个 CF 服务器；若文件里除了 CF 什么都没有，连文件一起删除，`my-api` 之类的其他服务器永远保留
 - 从 `.claude/settings.local.json` 与 `.claude/settings.json` 移除 CF 插件启用与 MCP 预批准；文件清空后自动删除（空 `.claude/` 目录一并收掉）
 - 自动移除当初 `--block-plugin-mcp` 写进 `~/.claude.json` 的 OAuth 屏蔽名单
 - `.gitignore` 里的 `.claude/settings.local.json` 忽略行**有意保留**：该规则对任何用 local settings 的项目都成立，不是 CF 专属
@@ -52,8 +52,8 @@ python3 <本技能目录>/scripts/deactivate_cf.py <项目根目录>
 
 ## OAuth 重复说明
 
-启用插件后，它自带的 4 个 OAuth 版 MCP 服务器（`cloudflare-api/builds/observability/bindings`）也会加载，与 token 版功能重复，并可能在 `~/.claude/.credentials.json` 里重新留下 OAuth 凭据。因此激活脚本**默认**就预写禁用名单（尽力而为，写入 `~/.claude.json` 的 `projects[目录].disabledMcpServers`；该文件会被运行中的会话重写，名单若"复活"重跑一次脚本即可）。兜底顺序：
+启用插件后，它自带的 5 个 OAuth 版 MCP 服务器（`cloudflare-api/docs/bindings/builds/observability`）也会加载，与 token 版功能重复，并可能在 `~/.claude/.credentials.json` 里重新留下 OAuth 凭据。因此激活脚本**默认**就预写禁用名单（尽力而为，写入 `~/.claude.json` 的 `projects[目录].disabledMcpServers`；该文件会被运行中的会话重写，名单若"复活"重跑一次脚本即可）。兜底顺序：
 
-1. 重启后在 `/mcp` 界面里确认；若 4 个 OAuth 版仍在，手动 disable（最可靠）；
+1. 重启后在 `/mcp` 界面里确认；若 5 个 OAuth 版仍在，手动 disable（最可靠）；
 2. 用户明确要保留插件的 OAuth MCP → `--keep-plugin-mcp`；
 3. 用户完全不想碰 OAuth 风险 → `--no-plugin`。

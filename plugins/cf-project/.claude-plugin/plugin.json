@@ -1,7 +1,7 @@
 {
   "name": "cf-project",
   "description": "按需把 Cloudflare 开发环境激活/停用到当前项目：项目级启用 cloudflare 插件、token 认证的 CF MCP 服务器写入项目 .mcp.json，幂等且不破坏已有配置",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": {
     "name": "sakiko999"
   },
