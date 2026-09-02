@@ -166,7 +166,7 @@ function pull() {
     try { last = fs.statSync(STAMP).mtimeMs } catch {}
     if (Date.now() - last < 86400e3) return
     if (fs.existsSync(path.join(DIR, '.git')) && tryGit('remote', 'get-url', 'origin') && tryGit('ls-remote', 'origin', 'main')) {
-      git('pull', '--rebase', 'origin', 'main')
+      git('pull', '--rebase', '--autostash', 'origin', 'main') // 工作区脏（如插件自更新清单）也能拉
       const tpl = readJSON(TPL)
       const keys = tpl._localOnly ?? DEFAULT_LOCAL_KEYS
       const prev = fs.existsSync(LOCAL) ? readJSON(LOCAL) : {}
@@ -203,7 +203,7 @@ function sync() {
   // 2. 远端有内容才 pull（空仓库首推前 pull 会失败）
   if (tryGit('ls-remote', 'origin', 'main')) {
     try {
-      git('pull', '--rebase', 'origin', 'main')
+      git('pull', '--rebase', '--autostash', 'origin', 'main') // 工作区脏（如插件自更新清单）也能拉
     } catch (e) {
       die(`${e.message}\n  template 冲突: 编辑 ${TPL} 解决冲突后 git rebase --continue，再重跑 sync`)
     }
