@@ -1,6 +1,6 @@
 {
   "name": "sakiko999-skills",
-  "description": "个人 Claude Code 技能集合：Ramda 函数式编程参考（TypeScript）、Cloudflare 项目环境按需激活/停用",
+  "description": "个人 Claude Code 技能集合：Ramda 函数式编程参考（TypeScript）、Cloudflare 项目环境按需激活/停用、全局 ~/.claude 配置跨机同步",
   "owner": {
     "name": "sakiko999"
   },
@@ -14,6 +14,11 @@
       "name": "cf-project",
       "source": "./plugins/cf-project",
       "description": "按需激活/停用项目的 Cloudflare 环境：项目级启用 CF 插件 + token 认证 CF MCP 服务器，幂等不破坏已有配置"
+    },
+    {
+      "name": "claude-sync",
+      "source": "./plugins/claude-sync",
+      "description": "GitHub 私有仓库同步全局 ~/.claude 配置：模板入库、密钥本地保留，跨 Windows/Linux/macOS"
     }
   ]
 }
