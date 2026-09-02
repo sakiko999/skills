@@ -1,7 +1,7 @@
 {
   "name": "claude-sync",
   "description": "用 GitHub 私有仓库同步全局 ~/.claude 配置（CLAUDE.md、settings、memory、plans）：settings.json 以模板入库、密钥（ANTHROPIC_BASE_URL/AUTH_TOKEN 等）各机器本地保留，跨 Windows/Linux/macOS",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "author": {
     "name": "sakiko999"
   },

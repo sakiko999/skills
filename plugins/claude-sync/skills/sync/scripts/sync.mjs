@@ -158,34 +158,35 @@ function adopt(url) {
   console.log(git('status', '--short') || '（工作区干净）')
 }
 
-// 每日一次的自动拉取（SessionStart hook 调用）：pull + 渲染，不 commit 不 push。
+// 每日一次的自动拉取（SessionStart hook 调用）：完整 sync 流程但不 push。
 // 任何失败只打一行不抛错——hook 不能打断会话启动。
 function pull() {
   try {
     let last = 0
     try { last = fs.statSync(STAMP).mtimeMs } catch {}
     if (Date.now() - last < 86400e3) return
-    if (fs.existsSync(path.join(DIR, '.git')) && tryGit('remote', 'get-url', 'origin') && tryGit('ls-remote', 'origin', 'main')) {
-      git('pull', '--rebase', '--autostash', 'origin', 'main') // 工作区脏（如插件自更新清单）也能拉
-      const tpl = readJSON(TPL)
-      const keys = tpl._localOnly ?? DEFAULT_LOCAL_KEYS
-      const prev = fs.existsSync(LOCAL) ? readJSON(LOCAL) : {}
-      const rendered = render(tpl, keys, prev)
-      if (JSON.stringify(rendered) !== JSON.stringify(prev)) {
-        writeJSON(LOCAL, rendered)
-        console.log(`claude-sync: 今日拉取完成，settings.json 已更新（${new Date().toLocaleString()}）`)
-      } else {
-        console.log(`claude-sync: 今日拉取完成，远端无新变更（${new Date().toLocaleString()}）`)
-      }
+    if (!fs.existsSync(path.join(DIR, '.git'))) return
+    if (!tryGit('remote', 'get-url', 'origin')) return
+    if (!tryGit('ls-remote', 'origin', 'main')) {
+      console.log(`claude-sync: 远端不可达，跳过拉取（下次会话重试，${new Date().toLocaleString()}）`)
+      return // 不写限频戳，网络恢复后重试
     }
+    sync(false) // 必须先回流再拉，否则本机未推送的 settings.json 改动会被远端渲染静默覆盖
+    console.log(`claude-sync: 今日拉取完成（${new Date().toLocaleString()}）`)
     fs.writeFileSync(STAMP, '')
   } catch (e) {
-    tryGit('rebase', '--abort') // 冲突时不把仓库留在 rebase 中间态
-    console.error(`claude-sync pull 跳过: ${String(e.stderr || e.message).split('\n')[0].trim()}`)
+    let conflicted = false
+    try { git('rebase', '--abort'); conflicted = true } catch {} // abort 成功 = 刚才确实卡在 rebase 冲突
+    const head = `claude-sync: 拉取（${new Date().toLocaleString()}）`
+    if (conflicted) console.log(`${head} 遇冲突已回滚——远端与本机对同一配置键有分歧，请说"同步配置"处理`)
+    else {
+      const line = String(e.stderr || e.message).split('\n').find(l => /CONFLICT|error|fatal|not/i.test(l))?.trim()
+      console.log(`${head} 跳过: ${line || 'git 异常'}`)
+    }
   }
 }
 
-function sync() {
+function sync(push = true) {
   if (!fs.existsSync(path.join(DIR, '.git'))) die('未初始化，先: node sync.mjs init [repo-url]')
   if (!tryGit('remote', 'get-url', 'origin')) die('未关联远端仓库')
 
@@ -200,12 +201,13 @@ function sync() {
   git('add', '-A')
   tryGit('commit', '-m', `claude-sync: ${new Date().toISOString()}`)
 
-  // 2. 远端有内容才 pull（空仓库首推前 pull 会失败）
+  // 2. 远端有内容才 pull（空仓库首推前 pull 会失败）；autostash 兜底脏工作区（如插件自更新清单）
   if (tryGit('ls-remote', 'origin', 'main')) {
     try {
-      git('pull', '--rebase', '--autostash', 'origin', 'main') // 工作区脏（如插件自更新清单）也能拉
+      git('pull', '--rebase', '--autostash', 'origin', 'main')
     } catch (e) {
-      die(`${e.message}\n  template 冲突: 编辑 ${TPL} 解决冲突后 git rebase --continue，再重跑 sync`)
+      if (!push) throw e // pull 场景由外层 catch 转成用户可见提醒
+      die(`${e.message}\n  template 冲突: 编辑 ${TPL} 解决冲突，把对方设置键补进本机 settings.json，git rebase --continue，再重跑 sync`)
     }
   }
 
@@ -219,9 +221,11 @@ function sync() {
     console.log('settings.json 已更新（远端变更 + 本机密钥保留）')
   }
 
-  // 4. push（-u 幂等）
-  tryGit('push', '-u', 'origin', 'main') ?? die('push 失败: 检查远端仓库存在且 token 有写权限')
-  console.log('sync 完成')
+  // 4. push（-u 幂等）；pull 场景到此为止
+  if (push) {
+    tryGit('push', '-u', 'origin', 'main') ?? die('push 失败: 检查远端仓库存在且 token 有写权限')
+    console.log('sync 完成')
+  }
 }
 
 const [cmd, ...rest] = process.argv.slice(2)
