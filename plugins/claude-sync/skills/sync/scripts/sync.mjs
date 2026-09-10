@@ -158,7 +158,8 @@ function adopt(url) {
   console.log(git('status', '--short') || '（工作区干净）')
 }
 
-// 每日一次的自动拉取（SessionStart hook 调用）：完整 sync 流程但不 push。
+// 每日一次的自动拉取（SessionStart hook 调用）：只读 fetch + 渲染 template → settings.json。
+// 不回流、不 commit、不 push——本机永远不因自动同步产生提交。
 // 任何失败只打一行不抛错——hook 不能打断会话启动。
 function pull() {
   try {
@@ -171,26 +172,43 @@ function pull() {
       console.log(`claude-sync: 远端不可达，跳过拉取（下次会话重试，${new Date().toLocaleString()}）`)
       return // 不写限频戳，网络恢复后重试
     }
-    sync(false) // 必须先回流再拉，否则本机未推送的 settings.json 改动会被远端渲染静默覆盖
+    applyRemote() // 只读：远端为源，渲染本地 settings.json
     console.log(`claude-sync: 今日拉取完成（${new Date().toLocaleString()}）`)
     fs.writeFileSync(STAMP, '')
   } catch (e) {
-    let conflicted = false
-    try { git('rebase', '--abort'); conflicted = true } catch {} // abort 成功 = 刚才确实卡在 rebase 冲突
     const head = `claude-sync: 拉取（${new Date().toLocaleString()}）`
-    if (conflicted) console.log(`${head} 遇冲突已回滚——远端与本机对同一配置键有分歧，请说"同步配置"处理`)
-    else {
-      const line = String(e.stderr || e.message).split('\n').find(l => /CONFLICT|error|fatal|not/i.test(l))?.trim()
-      console.log(`${head} 跳过: ${line || 'git 异常'}`)
-    }
+    const line = String(e.stderr || e.message).split('\n').find(l => /CONFLICT|error|fatal|not/i.test(l))?.trim()
+    console.log(`${head} 失败: ${line || 'git 异常'}`)
   }
 }
 
-function sync(push = true) {
+// 远端 template 为源，fetch 下来直接用 FETCH_HEAD 的版本渲染本地 settings.json
+//（本机密钥取自 LOCAL 原样保留）。同时把远端意图文件（install-plugins.sh 等）同步到工作区。
+// 只覆盖白名单意图文件：template 由渲染读远端，本地 template 不动；settings.json ignored 不会被覆盖。
+// 这是"拉取"语义的全部：不回流、不 commit、不 rebase。
+// ponytail: 意图文件白名单若增长，抽成 manifest 数组逐项 checkout。
+// .gitignore 不在白名单：它被远端覆盖会回滚本地未 push 的 ignore 改动，且 ignore 行增删本地各有分歧，不适合强制覆盖。
+const INTENT_FILES = ['install-plugins.sh', 'README.md']
+function applyRemote() {
+  git('fetch', 'origin', 'main')
+  for (const f of INTENT_FILES) tryGit('checkout', 'FETCH_HEAD', '--', f)
+  const tpl = JSON.parse(git('show', 'FETCH_HEAD:settings.template.json'))
+  const keys = tpl._localOnly ?? DEFAULT_LOCAL_KEYS
+  const prev = fs.existsSync(LOCAL) ? readJSON(LOCAL) : {}
+  const rendered = render(tpl, keys, prev)
+  if (JSON.stringify(rendered) !== JSON.stringify(prev)) {
+    writeJSON(LOCAL, rendered)
+    console.log('settings.json 已更新（远端 template + 本机密钥）')
+  }
+}
+
+// 手动推送：本机 settings.json 剔除密钥 → template，commit，rebase 远端，push。
+// 只在"本机改了想分享的配置"时手动跑；其余机器只 pull。
+function push() {
   if (!fs.existsSync(path.join(DIR, '.git'))) die('未初始化，先: node sync.mjs init [repo-url]')
   if (!tryGit('remote', 'get-url', 'origin')) die('未关联远端仓库')
 
-  // 1. 回流：本机 settings.json 剔除密钥 → template（本机改动先 commit，再由 rebase 与远端合并）
+  // 回流:本机 settings.json 剔除密钥 → template(本机改动先 commit, rebase 与远端合并)
   const tpl0 = ensureTemplate()
   const keys0 = tpl0._localOnly ?? DEFAULT_LOCAL_KEYS
   const local0 = fs.existsSync(LOCAL) ? readJSON(LOCAL) : {}
@@ -200,41 +218,24 @@ function sync(push = true) {
 
   git('add', '-A')
   tryGit('commit', '-m', `claude-sync: ${new Date().toISOString()}`)
-
-  // 2. 远端有内容才 pull（空仓库首推前 pull 会失败）；autostash 兜底脏工作区（如插件自更新清单）
   if (tryGit('ls-remote', 'origin', 'main')) {
     try {
       git('pull', '--rebase', '--autostash', 'origin', 'main')
     } catch (e) {
-      if (!push) throw e // pull 场景由外层 catch 转成用户可见提醒
-      die(`${e.message}\n  template 冲突: 编辑 ${TPL} 解决冲突，把对方设置键补进本机 settings.json，git rebase --continue，再重跑 sync`)
+      die(`${e.message}\n  template 冲突: 编辑 ${TPL} 解决冲突，把对方设置键补进本机 settings.json，git rebase --continue，再跑 push`)
     }
   }
-
-  // 3. 渲染：合并后的 template + 本机密钥 → settings.json
-  const tpl1 = readJSON(TPL)
-  const keys1 = tpl1._localOnly ?? DEFAULT_LOCAL_KEYS
-  const local1 = fs.existsSync(LOCAL) ? readJSON(LOCAL) : {}
-  const rendered = render(tpl1, keys1, local1)
-  if (JSON.stringify(rendered) !== JSON.stringify(local1)) {
-    writeJSON(LOCAL, rendered)
-    console.log('settings.json 已更新（远端变更 + 本机密钥保留）')
-  }
-
-  // 4. push（-u 幂等）；pull 场景到此为止
-  if (push) {
-    tryGit('push', '-u', 'origin', 'main') ?? die('push 失败: 检查远端仓库存在且 token 有写权限')
-    console.log('sync 完成')
-  }
+  tryGit('push', '-u', 'origin', 'main') ?? die('push 失败: 检查远端仓库存在且 token 有写权限')
+  console.log('已推送远端（template 为源，各机 pull 后重建）')
 }
 
 const [cmd, ...rest] = process.argv.slice(2)
 try {
   if (cmd === 'init') init(rest[0])
   else if (cmd === 'adopt') adopt(rest[0])
-  else if (cmd === 'sync') sync()
+  else if (cmd === 'push') push()
   else if (cmd === 'pull') pull()
-  else die(`用法: node sync.mjs init [repo-url] | adopt <repo-url> | sync | pull\n  pull = 每日限频的拉取（SessionStart hook 用）；CLAUDE_SYNC_DIR 可覆盖目标目录（默认 ~/.claude）`)
+  else die(`用法: node sync.mjs init [repo-url] | adopt <repo-url> | push | pull\n  pull = 每日限频的只读拉取（SessionStart hook 用）；CLAUDE_SYNC_DIR 可覆盖目标目录（默认 ~/.claude）`)
 } catch (e) {
   die(e.message)
 }
