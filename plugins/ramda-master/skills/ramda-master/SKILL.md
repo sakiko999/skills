@@ -1,9 +1,14 @@
 ---
 name: ramda-master
-description: Master Ramda for TypeScript. Use whenever the user writes or refactors code with the Ramda functional library, asks to convert imperative JavaScript/TypeScript into point-free functional style, needs a Ramda function recommendation for a specific task, wants a Ramda concept explained, or hits TypeScript type-inference problems with @types/ramda (lensProp/cond/either inferring as never, propEq argument order, curry signatures). Also triggers on "Ramda", "functional programming", "point-free", "compose/pipe", or when converting lodash/imperative code. Make sure to use this skill whenever Ramda is mentioned even implicitly — e.g. users asking to "make this more functional" or to refactor an array-processing loop — not just when they explicitly say "Ramda".
+description: Passive skill for writing correct, idiomatic, type-safe Ramda in TypeScript. Activates ONLY when the current project has Ramda installed (package.json/package-lock has "ramda"/"@types/ramda" dependency) AND the user writes, refactors, or asks about Ramda code, functional/point-free style, or hits @types/ramda type-inference issues (lensProp/cond/either as never, propEq arg order, curry signatures). If the project has no Ramda dependency, do NOT load this skill and recommend native JS/TS instead. Does NOT activate on generic "functional programming" mentions when Ramda isn't a project dependency.
 ---
 
 # Ramda Master
+
+**Gating rule (被动生效门禁):** 本 skill 只在**当前项目已安装 Ramda** 时生效。判定方式：检查 `package.json`（或 `pnpm-lock`/`yarn.lock`/`package-lock`）是否声明了 `ramda` / `@types/ramda` / `types-ramda` 依赖。
+- 若项目**没有** Ramda → 本 skill **不加载**，用原生 TS/JS 清晰表达即可（native `Array.map`/`filter`、`?.`/`??`）。
+- 若项目**有** Ramda，且用户涉及 Ramda 代码/函数式改写/类型问题 → 用本 skill，按函数式风格主动优化代码。
+- 用户只提「函数式」「写出更好的代码」但项目根本没装 Ramda → 不要提 Ramda，推荐普通 JS。
 
 A working reference for writing correct, idiomatic, **type-safe** Ramda in TypeScript. Built for developers who already know JavaScript and functional basics but keep tripping over Ramda's specific design and `@types/ramda`'s inference quirks.
 
