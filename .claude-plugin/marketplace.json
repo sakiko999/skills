@@ -19,6 +19,11 @@
       "name": "claude-sync",
       "source": "./plugins/claude-sync",
       "description": "GitHub 私有仓库同步全局 ~/.claude 配置：模板入库、密钥本地保留，跨 Windows/Linux/macOS"
+    },
+    {
+      "name": "edge-cdp",
+      "source": "./plugins/edge-cdp",
+      "description": "WSL/Linux 侧用 CDP 调试 Windows 侧 Edge：起干净独立 profile 实例、查/清微软残留 cookie、取页面 HTML/文本/截图"
     }
   ]
 }

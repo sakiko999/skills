@@ -1,0 +1,9 @@
+{
+  "name": "edge-cdp",
+  "description": "WSL/Linux 侧用 CDP 调试 Windows 侧 Edge：起干净独立 profile 实例、查/清微软残留 cookie、取页面 HTML/文本/截图，全程一条命令",
+  "version": "1.0.0",
+  "author": {
+    "name": "sakiko999"
+  },
+  "repository": "https://github.com/sakiko999/skills"
+}
