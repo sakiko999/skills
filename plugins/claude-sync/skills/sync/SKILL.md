@@ -22,7 +22,9 @@ description: 用 GitHub 私有仓库同步全局 ~/.claude 配置（CLAUDE.md、
 **必须先向用户展示影响范围并等确认，再执行 init**——用户可能不清楚哪些内容会被推上 GitHub：
 
 - 将入库：CLAUDE.md、settings 模板（密钥剔除）、plans/、memory、install-plugins.sh 等
-- 永不入库：`.credentials.json`、`settings.json` 中 `_localOnly` 密钥键、`projects/`（会话转录）、缓存与运行状态
+- 永不入库：`.credentials.json`、`settings.json` 中 `_localOnly` 本机键（BASE_URL/AUTH_TOKEN）、`projects/`（会话转录）、缓存与运行状态
+- 入库分发（可选，跨 Windows/Linux 分发用）：`GITHUB_PERSONAL_ACCESS_TOKEN`、`CLOUDFLARE_API_TOKEN` 已随 template 入库。
+  只有确实需要跨机共用同一 token 的项目才纳入；若各机 token 应不同，从 template 移除并把键加回 `_localOnly`。
 - 远端是**私有** GitHub 仓库，仓库内容 ≈ 当前 `.claude` 配置快照
 
 确认后：

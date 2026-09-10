@@ -15,11 +15,10 @@ const LOCAL = path.join(DIR, 'settings.json')
 const STAMP = path.join(DIR, '.sync-last-pull') // 每日自动拉取的限频戳
 
 // 密钥/机器相关键：不入库，各机器本地保留。点路径；可在 template 的 _localOnly 里增删。
+// GITHUB/CF token 已随 settings.template.json 入库分发（跨 Windows/Linux 分发用），故不在此处默认剔除。
 const DEFAULT_LOCAL_KEYS = [
   'env.ANTHROPIC_BASE_URL',
   'env.ANTHROPIC_AUTH_TOKEN',
-  'env.GITHUB_PERSONAL_ACCESS_TOKEN',
-  'env.CLOUDFLARE_API_TOKEN',
 ]
 
 const GITIGNORE = `# claude-sync: 凭证与本机状态不入库
