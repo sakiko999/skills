@@ -187,10 +187,14 @@ function pull() {
 // 这是"拉取"语义的全部：不回流、不 commit、不 rebase。
 // ponytail: 意图文件白名单若增长，抽成 manifest 数组逐项 checkout。
 // .gitignore 不在白名单：它被远端覆盖会回滚本地未 push 的 ignore 改动，且 ignore 行增删本地各有分歧，不适合强制覆盖。
-const INTENT_FILES = ['install-plugins.sh', 'README.md']
+const INTENT_FILES = ['.claude-sync/install-plugins.sh', '.claude-sync/README.md']
 function applyRemote() {
   git('fetch', 'origin', 'main')
-  for (const f of INTENT_FILES) tryGit('checkout', 'FETCH_HEAD', '--', f)
+  // 逐个 checkout 且失败出声：用 tryGit 的话路径写错会被静默吞掉，意图文件永远不同步
+  for (const f of INTENT_FILES) {
+    try { git('checkout', 'FETCH_HEAD', '--', f) }
+    catch (e) { console.log(`claude-sync: 意图文件 ${f} 同步失败：${String(e.stderr || e.message).split('\n')[0]}`) }
+  }
   const tpl = JSON.parse(git('show', 'FETCH_HEAD:settings.template.json'))
   const keys = tpl._localOnly ?? DEFAULT_LOCAL_KEYS
   const prev = fs.existsSync(LOCAL) ? readJSON(LOCAL) : {}
