@@ -70,5 +70,5 @@ cp -r plugins/cf-project/skills/cf-project ~/.claude/skills/
 - **hooks/register.tsx**：`turn.complete` / `prompt.submit` 扫描消息，`prompt.compose` 注入 `!!todo` / `!!important` 标记说明，`AbovePrompt` 画常驻列表，`Pane` 画面板
 - **hooks/extract.ts**：识别 `TODO:`、`IMPORTANT:`、`- [ ]`、`注意:`、`待办：`、`!!todo` 等行首标记，忽略代码块
 - **命令**：`/todo` 查看、`/todo open` 打开面板、`/todo close` 关闭面板、`/todo add <文本>`、`/todo important <文本>`、`/todo done <n>`、`/todo clear`
-- 记录保存在会话级 `$.state`，不跨会话持久化
+- 记录在 `$.state` 中显示，并写入 `$.store`（按 session id）——resume 同一会话时恢复；`/clear` 清除
 - 测试：`claude plugin test plugins/cc-todo`
