@@ -44,7 +44,7 @@ export const register: Register = on => {
     await $.command.register({
       name: 'todo',
       description: '查看、添加或清理本会话自动记录的 TODO / 重要信息',
-      argumentHint: '[open | clear | done <n> | add <text> | important <text>]',
+      argumentHint: '[open | close | clear | done <n> | add <text> | important <text>]',
     })
 
     return next(e)
@@ -87,6 +87,11 @@ export const register: Register = on => {
           ? '已打开 cc-todo 面板。'
           : `面板已创建，但当前界面放不下：${opened.reason}`,
       }
+    }
+
+    if (args === 'close') {
+      await $.ui.close({ id: PANE })
+      return { text: '已关闭 cc-todo 面板。' }
     }
 
     if (args === 'clear') {
