@@ -1,7 +1,7 @@
 {
   "name": "cc-sync",
   "description": "纯提示词 skill：说明如何用 GitHub 私有仓库 sakiko999/dotclaude 手动同步 ~/.claude 全局配置，并过滤各机注入的模型信息。不含 hook 或自动同步",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "author": {
     "name": "sakiko999"
   },
