@@ -15,14 +15,14 @@ description: 手动同步全局 ~/.claude 配置到 GitHub 私有仓库 sakiko99
 - 本机工作区是 `~/.claude`。检查是否已关联：`git -C ~/.claude remote -v`
 - 未关联：`git -C ~/.claude remote add origin https://github.com/sakiko999/dotclaude.git`
 - 新机：`git -C ~/.claude init -b main` 后加 remote，再
-  `git -C ~/.claude fetch origin main && git -C ~/.claude checkout origin/main -- CLAUDE.md .claude-sync settings.template.json`。
+  `git -C ~/.claude fetch origin main && git -C ~/.claude checkout origin/main -- CLAUDE.md settings.template.json .gitignore .gitattributes`。
   `settings.json` 使用本机的一份，不要从仓库覆盖。
 
 ## 同步范围
 
-- 入库：`CLAUDE.md`、`.claude-sync/`、`settings.template.json`、`session-memories/`
-- 不入库：`settings.json`、`.credentials.json`、`projects/`、`plugins/cache/`、`plugins/marketplaces/`、
-  `plans/`、`dev-mods/`、各类缓存
+- 入库：仅 `CLAUDE.md`、`settings.template.json`、`.gitignore`、`.gitattributes`
+- 不入库：`settings.json`、`.credentials.json`、`projects/`、`plugins/`、`session-memories/`、
+  `.claude-sync/`、`plans/`、`dev-mods/`、各类缓存
 
 ## settings 必须过滤的模型信息
 
@@ -67,13 +67,23 @@ git -C ~/.claude merge origin/main                 # 或 rebase
 ## 手动推送
 
 ```bash
-git -C ~/.claude add CLAUDE.md .claude-sync settings.template.json session-memories
+git -C ~/.claude add CLAUDE.md settings.template.json .gitignore .gitattributes
 git -C ~/.claude commit -m "config: ..."
 git -C ~/.claude pull --rebase origin main
 git -C ~/.claude push
 ```
 
 冲突：`settings.template.json` 两边改同一键时手动保留本机值；模型相关键已被过滤，不会参与冲突。
+
+## 新机补充（不在仓库里）
+
+- 插件：按 `settings.template.json` 的 `enabledPlugins` 逐个 `claude plugin install <name>@<marketplace>`
+- exa MCP（`~/.claude.json` 不归仓库管，用 API key 认证）：
+
+```bash
+claude mcp remove exa --scope user 2>/dev/null || true
+claude mcp add-json --scope user exa '{"type":"http","url":"https://mcp.exa.ai/mcp?client=claude-code-plugin","headers":{"Authorization":"Bearer ${EXA_API_KEY}"}}'
+```
 
 ## 禁止
 
