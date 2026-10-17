@@ -372,8 +372,12 @@ try {
   else if (cmd === 'adopt') adopt(rest[0])
   else if (cmd === 'push') push()
   else if (cmd === 'pull') pull(rest.includes('--force'))
+  else if (cmd === 'migrate') {
+    migrate()
+    console.log(`迁移完成: ${DIR}（ignore/attributes/merge driver 已就绪，机器本地文件已停止跟踪）`)
+  }
   else if (cmd === 'merge-driver') mergeDriver(rest)
-  else die(`用法: node sync.mjs init [repo-url] | adopt <repo-url> | push | pull [--force]\n  pull = 每日限频的只读拉取（SessionStart hook 用）；CLAUDE_SYNC_DIR 可覆盖目标目录（默认 ~/.claude）`)
+  else die(`用法: node sync.mjs init [repo-url] | adopt <repo-url> | push | pull [--force] | migrate\n  pull = 每日限频的只读拉取（SessionStart hook 用）；migrate = 升级后的一次性本地迁移\n  CLAUDE_SYNC_DIR 可覆盖目标目录（默认 ~/.claude）`)
 } catch (e) {
   die(e.message)
 }
