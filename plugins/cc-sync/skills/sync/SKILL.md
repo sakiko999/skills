@@ -70,7 +70,7 @@ git -C ~/.claude merge origin/main                 # 或 rebase
 git -C ~/.claude add CLAUDE.md settings.template.json .gitignore .gitattributes
 git -C ~/.claude commit -m "config: ..."
 git -C ~/.claude pull --rebase origin main
-git -C ~/.claude push
+git -C ~/.claude push -u origin main   # 首次用 -u 建立跟踪；已跟踪后直接 git push
 ```
 
 冲突：`settings.template.json` 两边改同一键时手动保留本机值；模型相关键已被过滤，不会参与冲突。
@@ -84,9 +84,3 @@ git -C ~/.claude push
 claude mcp remove exa --scope user 2>/dev/null || true
 claude mcp add-json --scope user exa '{"type":"http","url":"https://mcp.exa.ai/mcp?client=claude-code-plugin","headers":{"Authorization":"Bearer ${EXA_API_KEY}"}}'
 ```
-
-## 禁止
-
-- 不添加 SessionStart hook，不后台拉取
-- 不自动 pull/push/commit
-- 不提交 `settings.json`、`.credentials.json` 或任何 token
