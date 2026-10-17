@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// claude-sync — 用 git 私有仓库同步 ~/.claude 全局配置（Windows/Linux/macOS）。
+// cc-sync — 用 git 私有仓库同步 ~/.claude 全局配置（Windows/Linux/macOS）。
 // 模型：settings.template.json 入库（权威，git 管理合并），
 //       settings.json = template + 本机密钥（渲染产物，不入库）。
 // 键级三方合并不做，冲突交给 git 在 template 文件上处理 — ponytail: rebase 冲突手动解后重跑 sync。
@@ -21,7 +21,7 @@ const DEFAULT_LOCAL_KEYS = [
   'env.ANTHROPIC_AUTH_TOKEN',
 ]
 
-const GITIGNORE = `# claude-sync: 凭证与本机状态不入库
+const GITIGNORE = `# cc-sync: 凭证与本机状态不入库
 .credentials.json
 settings.json
 settings.local.json
@@ -53,7 +53,7 @@ plugins/plugin-catalog-cache.json
 plugins/.last_inuse_sweep
 `
 
-const die = (m) => { console.error(`claude-sync: ${m}`); process.exit(1) }
+const die = (m) => { console.error(`cc-sync: ${m}`); process.exit(1) }
 const isObj = (x) => x && typeof x === 'object' && !Array.isArray(x)
 const readJSON = (p) => JSON.parse(fs.readFileSync(p, 'utf8'))
 const writeJSON = (p, o) => fs.writeFileSync(p, JSON.stringify(o, null, 2) + '\n')
@@ -127,7 +127,7 @@ function init(url) {
   fs.writeFileSync(path.join(DIR, '.gitattributes'), '* -text\n')
   ensureTemplate()
   git('add', '-A')
-  tryGit('commit', '-m', 'claude-sync: init')
+  tryGit('commit', '-m', 'cc-sync: init')
   if (url) {
     tryGit('remote', 'remove', 'origin')
     git('remote', 'add', 'origin', url)
@@ -168,14 +168,14 @@ function pull() {
     if (!fs.existsSync(path.join(DIR, '.git'))) return
     if (!tryGit('remote', 'get-url', 'origin')) return
     if (!tryGit('ls-remote', 'origin', 'main')) {
-      console.log(`claude-sync: 远端不可达，跳过拉取（下次会话重试，${new Date().toLocaleString()}）`)
+      console.log(`cc-sync: 远端不可达，跳过拉取（下次会话重试，${new Date().toLocaleString()}）`)
       return // 不写限频戳，网络恢复后重试
     }
     applyRemote() // 只读：远端为源，渲染本地 settings.json
-    console.log(`claude-sync: 今日拉取完成（${new Date().toLocaleString()}）`)
+    console.log(`cc-sync: 今日拉取完成（${new Date().toLocaleString()}）`)
     fs.writeFileSync(STAMP, '')
   } catch (e) {
-    const head = `claude-sync: 拉取（${new Date().toLocaleString()}）`
+    const head = `cc-sync: 拉取（${new Date().toLocaleString()}）`
     const line = String(e.stderr || e.message).split('\n').find(l => /CONFLICT|error|fatal|not/i.test(l))?.trim()
     console.log(`${head} 失败: ${line || 'git 异常'}`)
   }
@@ -194,7 +194,7 @@ function applyRemote() {
   git('fetch', 'origin', 'main')
   // 失败出声：被吞掉的 checkout 会让意图文件永远不同步，还不报错
   try { git('checkout', 'FETCH_HEAD', '--', INTENT_DIR) }
-  catch (e) { console.log(`claude-sync: 意图目录 ${INTENT_DIR} 同步失败：${String(e.stderr || e.message).split('\n')[0]}`) }
+  catch (e) { console.log(`cc-sync: 意图目录 ${INTENT_DIR} 同步失败：${String(e.stderr || e.message).split('\n')[0]}`) }
   const tpl = JSON.parse(git('show', 'FETCH_HEAD:settings.template.json'))
   const keys = tpl._localOnly ?? DEFAULT_LOCAL_KEYS
   const prev = fs.existsSync(LOCAL) ? readJSON(LOCAL) : {}
@@ -220,7 +220,7 @@ function push() {
   if (JSON.stringify(upstream) !== JSON.stringify(tpl0)) writeJSON(TPL, upstream)
 
   git('add', '-A')
-  tryGit('commit', '-m', `claude-sync: ${new Date().toISOString()}`)
+  tryGit('commit', '-m', `cc-sync: ${new Date().toISOString()}`)
   if (tryGit('ls-remote', 'origin', 'main')) {
     try {
       git('pull', '--rebase', '--autostash', 'origin', 'main')

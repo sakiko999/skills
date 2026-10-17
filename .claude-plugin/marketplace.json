@@ -16,8 +16,8 @@
       "description": "按需激活/停用项目的 Cloudflare 环境：项目级启用 CF 插件 + token 认证 CF MCP 服务器，幂等不破坏已有配置"
     },
     {
-      "name": "claude-sync",
-      "source": "./plugins/claude-sync",
+      "name": "cc-sync",
+      "source": "./plugins/cc-sync",
       "description": "GitHub 私有仓库同步全局 ~/.claude 配置：模板入库、密钥本地保留，跨 Windows/Linux/macOS"
     },
     {
