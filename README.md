@@ -11,6 +11,7 @@
 /plugin marketplace add sakiko999/skills
 /plugin install ramda-master@sakiko999-skills
 /plugin install cf-project@sakiko999-skills
+/plugin install cc-sync@sakiko999-skills
 /plugin install cc-todo@sakiko999-skills
 ```
 

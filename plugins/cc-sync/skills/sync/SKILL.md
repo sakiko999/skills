@@ -3,7 +3,7 @@ name: sync
 description: 用 GitHub 私有仓库同步全局 ~/.claude 配置（CLAUDE.md、settings 模板、memory、plans、密钥本机保留）。settings.json 中 ANTHROPIC_BASE_URL、ANTHROPIC_AUTH_TOKEN、GITHUB_PERSONAL_ACCESS_TOKEN、CLOUDFLARE_API_TOKEN 等本地键各机器保留、不入库。跨 Windows/Linux/macOS。当用户要"同步 claude 配置 / 全局配置同步 / claude sync / 新机器导入 claude 配置"时使用。
 ---
 
-# claude-sync
+# cc-sync
 
 脚本：`$CLAUDE_PLUGIN_ROOT/skills/sync/scripts/sync.mjs`（node 无依赖，全平台 hook 走 node 不经 bash，规避 Windows 路径变量反斜杠剥离问题）。
 
