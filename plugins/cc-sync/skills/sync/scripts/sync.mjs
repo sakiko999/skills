@@ -306,8 +306,13 @@ function pull(force) {
 const INTENT_DIR = '.claude-sync'
 function applyRemote() {
   git('fetch', 'origin', 'main')
-  try { git('checkout', 'FETCH_HEAD', '--', INTENT_DIR) }
-  catch (e) { console.log(`cc-sync: 意图目录 ${INTENT_DIR} 同步失败：${String(e.stderr || e.message).split('\n')[0]}`) }
+  // 本地意图文件有未提交改动时不要覆盖——否则用户刚改的装机脚本会被每日 pull 静默回滚
+  if (tryGit('status', '--porcelain', '--', INTENT_DIR)) {
+    console.log(`cc-sync: ${INTENT_DIR} 有未提交改动，跳过覆盖（先 push 或提交）`)
+  } else {
+    try { git('checkout', 'FETCH_HEAD', '--', INTENT_DIR) }
+    catch (e) { console.log(`cc-sync: 意图目录 ${INTENT_DIR} 同步失败：${String(e.stderr || e.message).split('\n')[0]}`) }
+  }
 
   const raw = git('show', 'FETCH_HEAD:settings.template.json')
   const remoteTpl = JSON.parse(raw)
