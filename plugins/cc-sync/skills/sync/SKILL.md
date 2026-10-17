@@ -8,12 +8,19 @@ description: 用 GitHub 私有仓库同步全局 ~/.claude 配置（CLAUDE.md、
 脚本：`$CLAUDE_PLUGIN_ROOT/skills/sync/scripts/sync.mjs`（node 无依赖，全平台 hook 走 node 不经 bash，规避 Windows 路径变量反斜杠剥离问题）。
 
 同步模型：dotclaude 私有仓库是「意图」权威源，各机器是「消费方」。
-- `settings.template.json` 入库（密钥剔除）
-- `settings.json` = template + 本机密钥（渲染产物，被 gitignore）
+- `settings.template.json` 入库，作为共享基线（密钥剔除）
+- `settings.json` = template 与本机改动三方合并的结果 + 本机密钥（渲染产物，被 gitignore）
 - `_localOnly` 数组（template 顶层）声明不入库的点路径键
 
-**单向模型**：本机自动化只 `pull`（只读 fetch + 渲染，不回流不 commit），
-改动共享始终手动 `push`。这消除了跨机 rebase/冲突的自动触发源。
+**冲突策略**：每次 pull/push 用 `git merge-base` 的 template 作基线做 JSON 三方合并：
+只有一边改过的键采纳那一边，两边都改过的键保留本机值并打印出来。`settings.template.json`
+不再因为「整份本机 settings 覆盖」而产生 git 冲突；rebase 时由 `ccsync-json` 合并驱动处理。
+
+**单向模型**：本机自动化只 `pull`（fetch + 三方合并渲染，不 commit 不 push），
+改动共享始终手动 `push`。
+
+**不入库的机器本地内容**：`plans/`、`mcp-needs-auth-cache.json`、插件目录缓存、`dev-mods/`。
+它们跨机路径/内容不同，同步只会互相删除。文件本身仍留在磁盘上。
 
 **范围外**：`~/.claude.json`（全局 MCP 服务器、项目列表等 HOME 根下文件）不归本插件管，跨机需另行处理。
 
@@ -36,10 +43,11 @@ description: 用 GitHub 私有仓库同步全局 ~/.claude 配置（CLAUDE.md、
 
 ## 自动化时机
 
-- **拉取**：SessionStart hook 自动跑 `pull`（只读 fetch + 渲染 settings），24h 限频（`.sync-last-pull`）；
-  失败静默不打断会话。
+- **拉取**：SessionStart hook 自动跑 `pull`（fetch + 三方合并渲染 settings），24h 限频（`.sync-last-pull`）；
+  失败静默不打断会话。手动立即拉取：`pull --force`。
 - **推送**：始终手动——用户说"同步配置"或本机改了想共享的配置时执行 `push`。
-  `push` 会回流本机 settings → template → commit → rebase 远端 → push。不要自动 push（半成品、多机冲突风险）。
+  `push` 把本机 settings 三方合并进 template → commit → rebase 远端（template 由合并驱动处理）
+  → push。不要自动 push（半成品风险）。
 
 ## 新机器导入
 
@@ -62,9 +70,10 @@ bash install-plugins.sh                                        # 声明式装插
 
 ## 故障处理
 
-- **template 冲突**（手动 push 时 rebase 停止）：编辑 `~/.claude/settings.template.json` 解冲突，
-  并把对方改动中的设置键补进本机 `settings.json`（本机 settings 是回流源）→
-  `git -C ~/.claude rebase --continue` → 重跑 push。
+- **template 冲突**：正常情况下不会再出现（JSON 合并驱动接管）。若出现，先确认
+  `git -C ~/.claude config --get merge.ccsync-json.driver` 有值；没有就重跑一次 `push`（会自动配置）。
+- **其他文件冲突**（CLAUDE.md、`.claude-sync/*` 等两份文本改了同一段）：按普通 git 冲突处理，
+  解决后 `git -C ~/.claude rebase --continue`，再跑 push。
 - **push 失败**：检查远端 repo 存在、token 有写权限。
 - **不想同步某个键**：改 template 顶层 `_localOnly` 数组（点路径，如 `env.FOO`），渲染后该键本地保留。
 - **Windows 侧 path**：hook 走 node 不经 bash，`$CLAUDE_PLUGIN_ROOT` 反斜杠由 node 正确处理。
