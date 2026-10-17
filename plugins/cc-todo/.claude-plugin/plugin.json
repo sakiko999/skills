@@ -1,7 +1,7 @@
 {
   "name": "cc-todo",
-  "version": "0.1.1",
-  "description": "每轮自动记录 TODO / 重要信息，并在输入框上方常驻显示",
+  "version": "0.2.0",
+  "description": "每轮自动记录 TODO / 重要信息，并在输入框上方常驻显示；记录随会话 resume 保留",
   "author": {
     "name": "sakiko999"
   },

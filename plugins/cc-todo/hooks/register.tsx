@@ -21,6 +21,12 @@ const CAPTURE = `## 会话记录 (cc-todo)
 const makeId = () =>
   `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
 
+const storeKey = async ($: EngineInterface) => `notes:${await $.session.id()}`
+
+async function persist($: EngineInterface): Promise<void> {
+  await $.store.set(await storeKey($), await read($, notes))
+}
+
 async function record($: EngineInterface, found: Draft[]): Promise<void> {
   if (found.length === 0) return
 
@@ -37,16 +43,35 @@ async function record($: EngineInterface, found: Draft[]): Promise<void> {
 
     return fresh.length === 0 ? list : [...list, ...fresh].slice(-MAX)
   })
+
+  await persist($)
 }
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
+    const saved = await $.store.get(await storeKey($))
+    if (Array.isArray(saved)) {
+      const valid = (saved as Note[]).filter(
+        note =>
+          note != null &&
+          typeof note.id === 'string' &&
+          typeof note.text === 'string' &&
+          (note.kind === 'todo' || note.kind === 'important' || note.kind === 'note'),
+      )
+      await update($, notes, () => valid.slice(-MAX))
+    }
+
     await $.command.register({
       name: 'todo',
       description: '查看、添加或清理本会话自动记录的 TODO / 重要信息',
       argumentHint: '[open | close | clear | done <n> | add <text> | important <text>]',
     })
 
+    return next(e)
+  })
+
+  on('session.end', async ($, e, next) => {
+    if (e.reason === 'clear') await $.store.delete(`notes:${e.sessionId}`)
     return next(e)
   })
 
@@ -96,6 +121,7 @@ export const register: Register = on => {
 
     if (args === 'clear') {
       await update($, notes, () => [])
+      await persist($)
       return { text: '已清空本会话的记录。' }
     }
 
@@ -106,6 +132,7 @@ export const register: Register = on => {
       if (note === undefined) return { text: `没有第 ${index} 条记录。` }
 
       await update($, notes, current => current.filter((_, i) => i !== index - 1))
+      await persist($)
       return { text: `已移除 #${index}: ${note.text}` }
     }
 
@@ -149,11 +176,12 @@ export const register: Register = on => {
             <Button
               label=" ×"
               plain
-              onPress={() =>
-                update($, notes, current =>
+              onPress={async () => {
+                await update($, notes, current =>
                   current.filter(item => item.id !== note.id),
                 )
-              }
+                await persist($)
+              }}
             />
           </Box>
         ))}
