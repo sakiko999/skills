@@ -1,0 +1,9 @@
+{
+  "name": "cc-todo",
+  "version": "0.1.0",
+  "description": "每轮自动记录 TODO / 重要信息，并在输入框上方常驻显示",
+  "author": {
+    "name": "sakiko999"
+  },
+  "types": "./types/index.d.ts"
+}
