@@ -18,7 +18,7 @@
     {
       "name": "cc-sync",
       "source": "./plugins/cc-sync",
-      "description": "GitHub 私有仓库同步全局 ~/.claude 配置：模板入库、密钥本地保留，跨 Windows/Linux/macOS"
+      "description": "纯提示词 skill：说明如何手动用 GitHub 私有仓库 dotclaude 同步 ~/.claude 配置，并过滤模型相关键"
     },
     {
       "name": "edge-cdp",
