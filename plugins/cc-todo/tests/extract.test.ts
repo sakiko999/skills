@@ -37,3 +37,30 @@ test('ignores markers inside fenced code blocks', () => {
 
   expect(found).toEqual([{ kind: 'todo', text: 'the real one' }])
 })
+
+test('a backtick fence does not close a tilde fence', () => {
+  const found = extractNotes([
+    '~~~md',
+    '```',
+    'TODO: inside tildes',
+    '~~~',
+    'TODO: outside',
+  ].join('\n'))
+
+  expect(found).toEqual([{ kind: 'todo', text: 'outside' }])
+})
+
+test('accepts + and numbered task list items', () => {
+  const found = extractNotes(['+ [ ] plus', '1. [ ] numbered'].join('\n'))
+
+  expect(found).toEqual([
+    { kind: 'todo', text: 'plus' },
+    { kind: 'todo', text: 'numbered' },
+  ])
+})
+
+test('clips a very long note', () => {
+  const found = extractNotes(`TODO: ${'x'.repeat(600)}`)
+
+  expect(found[0]!.text).toHaveLength(500)
+})

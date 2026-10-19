@@ -27,9 +27,25 @@ async function persist($: EngineInterface): Promise<void> {
   await $.store.set(await storeKey($), await read($, notes))
 }
 
-async function record($: EngineInterface, found: Draft[]): Promise<void> {
-  if (found.length === 0) return
+/** Notes restored at session.start; anything unreadable starts empty. */
+export function restoreNotes(saved: unknown): Note[] {
+  if (!Array.isArray(saved)) return []
 
+  return (saved as Note[])
+    .filter(
+      note =>
+        note != null &&
+        typeof note.id === 'string' &&
+        typeof note.text === 'string' &&
+        (note.kind === 'todo' || note.kind === 'important' || note.kind === 'note'),
+    )
+    .slice(-MAX)
+}
+
+async function record($: EngineInterface, found: Draft[]): Promise<number> {
+  if (found.length === 0) return 0
+
+  let added = 0
   await update($, notes, list => {
     const seen = new Set(list.map(note => note.text.toLowerCase()))
     const fresh: Note[] = []
@@ -41,25 +57,20 @@ async function record($: EngineInterface, found: Draft[]): Promise<void> {
       fresh.push({ id: makeId(), kind: draft.kind, text: draft.text })
     }
 
+    added = fresh.length
     return fresh.length === 0 ? list : [...list, ...fresh].slice(-MAX)
   })
 
-  await persist($)
+  if (added > 0) await persist($)
+  return added
 }
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const saved = await $.store.get(await storeKey($))
-    if (Array.isArray(saved)) {
-      const valid = (saved as Note[]).filter(
-        note =>
-          note != null &&
-          typeof note.id === 'string' &&
-          typeof note.text === 'string' &&
-          (note.kind === 'todo' || note.kind === 'important' || note.kind === 'note'),
-      )
-      await update($, notes, () => valid.slice(-MAX))
-    }
+    // Always replace the in-memory list, never only when a store entry exists:
+    // a fresh or cleared session must not inherit notes from the previous one.
+    await update($, notes, () => restoreNotes(saved))
 
     await $.command.register({
       name: 'todo',
@@ -71,17 +82,24 @@ export const register: Register = on => {
   })
 
   on('session.end', async ($, e, next) => {
-    if (e.reason === 'clear') await $.store.delete(`notes:${e.sessionId}`)
+    if (e.reason === 'clear') {
+      await update($, notes, () => [])
+      await $.store.delete(`notes:${e.sessionId}`)
+    }
     return next(e)
   })
 
   on('prompt.submit', async ($, e, next) => {
     if (e.command === undefined && e.isMeta !== true) {
-      await record($, extractNotes(e.text))
+      try {
+        await record($, extractNotes(e.text))
+      } catch {
+        // Recording is a side effect; a store failure must never block the prompt.
+      }
     }
 
     return next(e)
-  })
+  }).catch(($, e, next) => next(e))
 
   on('turn.complete', async ($, e, next) => {
     const ran = await next(e)
@@ -140,8 +158,8 @@ export const register: Register = on => {
     if (add !== null) {
       const text = add[2]!.trim()
       const kind = add[1]!.toLowerCase() === 'important' ? 'important' : 'todo'
-      await record($, [{ kind, text }])
-      return { text: `已记录：${text}` }
+      const added = await record($, [{ kind, text }])
+      return { text: added > 0 ? `已记录：${text}` : `已存在：${text}` }
     }
 
     if (list.length === 0) {
