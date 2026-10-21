@@ -1,6 +1,6 @@
 {
   "name": "sakiko999-skills",
-  "description": "个人 Claude Code 技能集合：Ramda 函数式编程参考（TypeScript）、Cloudflare 项目环境按需激活/停用、全局 ~/.claude 配置跨机同步",
+  "description": "个人 Claude Code 技能集合：Remeda / Ramda 函数式编程参考（TypeScript / TSX）、Cloudflare 项目环境按需激活/停用、全局 ~/.claude 配置跨机同步",
   "owner": {
     "name": "sakiko999"
   },
@@ -9,6 +9,11 @@
       "name": "ramda-master",
       "source": "./plugins/ramda-master",
       "description": "Master Ramda for TypeScript — 编写正确、地道、类型安全的 Ramda 代码"
+    },
+    {
+      "name": "remeda-master",
+      "source": "./plugins/remeda-master",
+      "description": "优先使用 Remeda 函数式工具（TypeScript / TSX，默认 data-last）：conditional 替代多层分支、pipe 替代手写循环、不可变更新与类型收窄"
     },
     {
       "name": "cf-project",
