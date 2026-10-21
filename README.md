@@ -56,7 +56,7 @@ cp -r plugins/cf-project/skills/cf-project ~/.claude/skills/
 > 优先使用 Remeda 函数式工具（TypeScript / TSX）：用 `conditional` 替代多层 switch/if-else，用 `pipe` 替代手写循环，并覆盖不可变更新、类型收窄与 React/TSX 用法。
 
 - **SKILL.md**：单文件，包含生效门禁、心智模型、决策顺序、6 个场景示例（conditional / pipe / 可选值 / 不可变更新 / 类型收窄 / TSX）、任务速查表与反模式
-- 默认 data-last：示例统一写成 `pipe(data, fn(...))`，便于组合与复用
+- 单步 data-first、组合 data-last：简单调用直接传数据，多步转换用 `pipe` 串联
 - 仅在当前包直接依赖 `remeda` 时生效；未安装时不擅自引入
 - 示例基于 **remeda 2.52.0 + TypeScript strict** 编译验证（`defaultTo` 需要 2.28+，多级 `prop` 需要 2.27+）
 

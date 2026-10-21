@@ -1,6 +1,6 @@
 {
   "name": "remeda-master",
-  "description": "优先使用 Remeda 函数式工具（TypeScript / TSX，默认 data-last）：conditional 替代多层分支、pipe 替代手写循环、不可变更新与类型收窄",
+  "description": "优先使用 Remeda 函数式工具（TypeScript / TSX，单步 data-first、组合 data-last）：conditional 替代多层分支、pipe 替代手写循环、不可变更新与类型收窄",
   "version": "1.0.0",
   "author": {
     "name": "sakiko999"

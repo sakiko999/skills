@@ -1,6 +1,6 @@
 ---
 name: remeda-master
-description: Use Remeda's functional utilities by default when remeda is a direct dependency in the current package's package.json (dependencies/devDependencies/peerDependencies). Applies to .ts and .tsx (React/JSX) — prefer pipe/filter/map/conditional/groupBy/setPath over hand-written loops, multi-level switch/if-else, and mutable updates, while keeping code readable. Also use when refactoring imperative TypeScript/TSX to Remeda, preferring data-last calls composed in pipe, or fixing Remeda type errors, but only when remeda is already a direct dependency. If remeda is NOT a direct dependency, do not introduce it or rewrite code to Remeda; use native JS/TS unless the user explicitly asks to install it. 触发词：remeda、函数式工具、pipe、conditional、TS/TSX 重构。
+description: Use Remeda's functional utilities by default when remeda is a direct dependency in the current package's package.json (dependencies/devDependencies/peerDependencies). Applies to .ts and .tsx (React/JSX) — prefer pipe/filter/map/conditional/groupBy/setPath over hand-written loops, multi-level switch/if-else, and mutable updates, while keeping code readable. Also use when refactoring imperative TypeScript/TSX to Remeda, choosing data-first for single steps and data-last for composition, or fixing Remeda type errors, but only when remeda is already a direct dependency. If remeda is NOT a direct dependency, do not introduce it or rewrite code to Remeda; use native JS/TS unless the user explicitly asks to install it. 触发词：remeda、函数式工具、pipe、conditional、TS/TSX 重构。
 ---
 
 # Remeda Master
@@ -16,14 +16,14 @@ description: Use Remeda's functional utilities by default when remeda is a direc
 
 ## 心智模型
 
-1. **双 API，默认 data-last**：首选 `pipe(items, filter(fn))`；data-first `filter(items, fn)` 只作为单次调用的简写。data-last 更容易组合和复用，读起来就是“数据流经变换”。Remeda 不是 Ramda：没有 `_` 占位符。
+1. **双 API**：单步用 data-first `filter(items, fn)`，最直接；2 步以上或需要复用用 data-last `pipe(items, filter(fn), ...)` / `filter(fn)`。data-last 的价值在组合与复用，不是所有地方都更清楚。Remeda 不是 Ramda：没有 `_` 占位符。
 2. **不可变**：函数返回新数组/对象，不修改入参。`sortBy`、`setPath`、`mergeDeep` 都是如此。
 3. **惰性 `pipe`**：直接写在 `pipe` 里的 data-last 函数（`map`、`filter`、`take`、`find`、`first`、`unique` 等）会融合并短路；包成 `($) => filter($, fn)` 会关闭惰性。`map` / `filter` 等回调的第三个参数只含已处理的前缀，不要依赖完整数组。
 
 ## 默认决策顺序
 
-1. 默认 data-last：单步也写成 `pipe(data, fn(...args))`；data-first 只作临时单次调用的简写。
-2. 两步以上 → `pipe`。要复用就写具名函数、显式声明参数，再在函数体里用 `pipe`；不要用 `piped` 当独立工厂（TypeScript 推不出入参类型）。
+1. 单步 → data-first，直接调用：`filter(users, fn)`、`conditional(status, ...)`。
+2. 两步以上或需要复用 → data-last + `pipe`：`pipe(data, fn(...), ...)`；复用变换可以先 `const fn = filter(...)`。要复用整条管道就写具名函数、显式声明参数，再在函数体里用 `pipe`；不要用 `piped` 当独立工厂（TypeScript 推不出入参类型）。
 3. 分支：1–2 个 → `when` / 三元；3 个以上或需要返回值 → `conditional`。
 4. 管道超过 4–5 步、或中间结果有业务含义 → 提取具名常量/函数，不要硬写 point-free。
 5. 改完跑类型检查；不要用 `as any` 压下去。
@@ -42,15 +42,13 @@ function getLabel(status: OrderStatus) {
   }
 }
 
-// after：data-last，cases 在前，数据从 pipe 流入
+// after：单步使用，data-first
 const getLabel = (status: OrderStatus) =>
-  pipe(
+  conditional(
     status,
-    conditional(
-      [(s) => s === "paid", constant("已支付")],
-      [(s) => s === "shipped", constant("已发货")],
-      constant("未知"), // 兜底：最后一个 case 写成单个函数
-    ),
+    [(s) => s === "paid", constant("已支付")],
+    [(s) => s === "shipped", constant("已发货")],
+    constant("未知"), // 兜底：最后一个 case 写成单个函数
   );
 ```
 
@@ -58,8 +56,8 @@ const getLabel = (status: OrderStatus) =>
 
 - 每个 case 是 `[predicate, transformer]`；最后一个单函数是 default。
 - **没有匹配且没有 default 会抛异常**，不是返回 `undefined`。写 default，或确认分支穷尽。
-- `conditional(...)` 先接收 cases、返回等待数据的函数，所以放进 `pipe` 最自然。
 - 固定返回值用 `constant(value)`；需要基于数据计算时直接用 `(x) => ...`。
+- **复用或组合时用 data-last**：`conditional(...)(val)` 本身是合法写法，不是禁用；`const label: (s: OrderStatus) => string = conditional([...], constant("未知"))` 还能把 cases 复用。但直接写 `conditional(...)(status)` 时，TypeScript 没有数据参数来锚定 `T`，strict 下常推不出类型；给返回函数标注类型、或放进 `pipe(status, conditional(...))` 即可。
 - **类型收窄的范围**：每个 case 可以写自己的类型谓词，transformer 会收窄（`[(x): x is Circle => x.kind === "circle", (x) => x.r]`）。但后面的 case 和 fallback 不会继承前面 case 的否定收窄；需要那种收窄时，保留 `switch` / 三元。
 
 ## 场景 2：手写循环 → pipe
@@ -86,8 +84,8 @@ const result = pipe(
 ```
 
 - `sortBy` 返回副本，不会像 `Array.prototype.sort` 那样改原数组。降序：`sortBy([prop("age"), "desc"])`；多条件：`sortBy(prop("team"), [prop("age"), "desc"])`。它用原生 `<` / `>` 比较，不是 `localeCompare`；中文或本地化排序用 `sort((a, b) => a.name.localeCompare(b.name))`。
-- `groupBy` / `groupByProp`：key 是字面量联合时返回 partial record，`groups[key]` 可能 `undefined`；key 是 `string` 时是完整 Record。统一用 `groups[key] ?? []` 或 `pipe(groups, entries())` 最稳。
-- 单步也用 data-last：`pipe(users, filter((u) => u.active))`、`pipe(users, sumBy((u) => u.age))`。
+- `groupBy` / `groupByProp`：key 是字面量联合时返回 partial record，`groups[key]` 可能 `undefined`；key 是 `string` 时是完整 Record。统一用 `groups[key] ?? []` 或 `entries(groups)` 最稳。
+- 单步用 data-first：`filter(users, (u) => u.active)`、`sumBy(users, (u) => u.age)`；上面这条是 4 步转换，所以用 `pipe` + data-last。
 - 不要用 `reduce` 去做 `map` / `filter` 能直接表达的事。
 
 ## 场景 3：可选值 / 深层取值
@@ -96,27 +94,27 @@ const result = pipe(
 type Order = { shipping: { address: { city?: string; zip?: string } } };
 const order: Order = { shipping: { address: { city: "北京", zip: "100000" } } };
 
-const name = pipe(maybeUser?.nickname, when(isNullish, constant("匿名")));
+const name = when(maybeUser?.nickname, isNullish, constant("匿名"));
 const city = pipe(order, prop("shipping", "address", "city"), defaultTo("未知"));
 const zip = pipe(order, prop("shipping", "address", "zip"), defaultTo("000000"));
-const email = pipe(maybeUser?.email, defaultTo("未填写"));
+const email = defaultTo(maybeUser?.email, "未填写");
 ```
 
-- `prop(...keys)(obj)` 支持编译期已知的深层路径；任一层为 `null` / `undefined` 时返回 `undefined`，配合 `defaultTo(fallback)(data)` 使用。
-- `defaultTo` 只处理 `null` / `undefined`，不会把 `0`、`false`、`""` 当空值。data 必须可能为空，否则类型系统会拒绝这个 fallback。
+- `prop(obj, ...keys)`（data-first）/ `prop(...keys)(obj)`（data-last）支持编译期已知的深层路径；任一层为 `null` / `undefined` 时返回 `undefined`，配合 `defaultTo` 使用。
+- `defaultTo(data, fallback)`（data-first）/ `defaultTo(fallback)(data)`（data-last）只处理 `null` / `undefined`，不会把 `0`、`false`、`""` 当空值。data 必须可能为空，否则类型系统会拒绝这个 fallback。
 - `pathOr` 自 2.28.0 起 deprecated，不要再写；等价写法是 `pipe(obj, prop(...keys), defaultTo(fallback))`。
 - 静态浅路径用原生 `maybeUser?.nickname ?? "未知"` 更直接。运行时动态的 `string[]` 路径 `prop` 不支持（key 受 `KeysDeep<T>` 约束），需要自己写带类型的 getter。
 
 ## 场景 4：不可变更新
 
 ```ts
-// order 沿用场景 3；data-last：参数在前，数据最后流入
-const moved = pipe(order, setPath(["shipping", "address", "city"], "上海"));
-const next = pipe(order, mergeDeep({ shipping: { address: { city: "北京" } } }));
-const aged = pipe({ age: 30 }, evolve({ age: (age) => age + 1 }));
+// order 沿用场景 3；单步更新，data-first
+const moved = setPath(order, ["shipping", "address", "city"], "上海");
+const next = mergeDeep(order, { shipping: { address: { city: "北京" } } });
+const aged = evolve({ age: 30 }, { age: (age) => age + 1 });
 ```
 
-- `set(path, value)(data)`、`setPath(path, value)(data)`、`merge(source)(data)`、`mergeDeep(source)(data)`、`evolve(evolver)(data)`。
+- `set(obj, key, value)`、`setPath(obj, path, value)`、`merge(data, source)`、`mergeDeep(destination, source)`、`evolve(data, evolver)`；放进管道时用 data-last：`setPath(path, value)(data)`、`mergeDeep(source)(data)`、`evolve(evolver)(data)`。
 - `setPath` 要求路径中间层在类型中存在；中间层可能为空时用 `mergeDeep` 或展开。Remeda 没有 `assoc`、`modify`、`lens`——那是 Ramda 的 API。
 
 ## 场景 5：类型收窄
@@ -129,11 +127,11 @@ const emails = pipe(
   map((e) => e.toLowerCase()),
 );
 
-const [adults, minors] = pipe(users, partition((u) => u.age >= 18));
+const [adults, minors] = partition(users, (u) => u.age >= 18);
 ```
 
 - 用 `isDefined` / `isNonNullish` 或自定义 type predicate 做 `filter`，结果类型会自动收窄。`isDefined` 只排除 `undefined`（`null` 仍保留）；要同时排除 `null` 用 `isNonNullish`。
-- `partition(predicate)(data)` 返回 `[匹配项, 不匹配项]`。
+- `partition(data, predicate)`（data-first）/ `partition(predicate)(data)`（data-last）返回 `[匹配项, 不匹配项]`。
 
 ## 场景 6：TSX / React
 
@@ -147,7 +145,7 @@ function TeamList({ users }: { users: User[] }) {
     sortBy(prop("name")),
     groupByProp("team"),
   );
-  const teams = pipe(groups, entries());
+  const teams = entries(groups);
 
   return (
     <div>
@@ -166,13 +164,11 @@ function TeamList({ users }: { users: User[] }) {
 
 ```tsx
 const StatusBadge = ({ user }: { user: User }) =>
-  pipe(
+  conditional(
     user,
-    conditional(
-      [(u) => u.banned, constant(<Badge tone="red">已封禁</Badge>)],
-      [(u) => !u.verified, constant(<Badge tone="amber">待验证</Badge>)],
-      constant(<Badge tone="green">正常</Badge>),
-    ),
+    [(u) => u.banned, constant(<Badge tone="red">已封禁</Badge>)],
+    [(u) => !u.verified, constant(<Badge tone="amber">待验证</Badge>)],
+    constant(<Badge tone="green">正常</Badge>),
   );
 ```
 
@@ -200,7 +196,7 @@ TSX 注意：
 ## 规则与反模式
 
 - **不要臆造函数**。2.x 没有 `cond`、`ifElse`、`unless`、`assoc`、`modify`、`lens`、`ascend` / `descend`、`equals`、`propEq`。对应写法是 `conditional`、`when`、`setPath`、`isDeepEqual`。
-- **默认 data-last**：`pipe(items, filter(fn))`；data-first `filter(items, fn)` 只作单次简写。单独 `filter(fn)(items)` 通常推不出元素类型（strict 下报错），放进 `pipe` 或显式给类型参数；`filter(fn, items)` 是错的。
+- **单步 data-first，组合 data-last**：`filter(items, fn)` 用于单次；`pipe(items, filter(fn), ...)` 用于 2 步以上或复用。单独 `filter(fn)(items)` 通常推不出元素类型（strict 下报错），放进 `pipe` 或显式给类型参数；`filter(fn, items)` 是错的。
 - 单参数函数的 data-last 要显式调用：`first()`、`unique()`、`entries()`；类型守卫直接传 `isNonNullish`，不要加括号。
 - `reduce` 的 `initialValue` 必填；`conditional` 的 predicate / transformer 只接收 value，不要写 `(value, index)`。
 - `mapValues` 回调是 `(value, key)`，`mapKeys` 是 `(key, value)`；`pick` / `omit` 的键是数组，不是可变参数。`first([])` 返回 `undefined`。
