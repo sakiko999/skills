@@ -33,7 +33,7 @@
     {
       "name": "cc-todo",
       "source": "./plugins/cc-todo",
-      "description": "每轮自动记录 TODO / 重要信息，输入框上方常驻显示，/todo open 打开可滚动面板"
+      "description": "每轮自动记录 TODO / 重要信息到项目根目录的 CLAUDE.md，输入框上方常驻显示，/todo open 打开可滚动面板"
     }
   ]
 }

@@ -2,11 +2,11 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
 import type { Note } from '../types'
+import { applyNotes, idFor, MAX_NOTES, parseNotes } from './claude-md'
 import { extractNotes, type Draft } from './extract'
 
 const notes = atom({ plugin: 'cc-todo', key: 'notes' } as const, [] as Note[])
 
-const MAX = 200
 const PANE = 'cc-todo'
 const LABEL: Record<Note['kind'], string> = {
   todo: '[ ]',
@@ -14,39 +14,52 @@ const LABEL: Record<Note['kind'], string> = {
   note: '[.]',
 }
 
-const CAPTURE = `## 会话记录 (cc-todo)
+const CAPTURE = `## 项目记录 (cc-todo)
 
-当出现需要后续跟进的事项时，在回复中单独一行写 \`!!todo <一句话>\`；当出现必须记住的约束、决定或风险时，单独一行写 \`!!important <一句话>\`。这些行会被自动记录并显示在输入框上方。不要重复标注已经记录的内容，也不要把整段回复复制进去。`
+当出现需要后续跟进的事项时，在回复中单独一行写 \`!!todo <一句话>\`；当出现必须记住的约束、决定或风险时，单独一行写 \`!!important <一句话>\`。这些行会被自动写入项目根目录的 CLAUDE.md，并显示在输入框上方。不要重复标注已经记录的内容，也不要把整段回复复制进去。`
 
-const makeId = () =>
-  `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
+const claudeMd = async ($: EngineInterface) =>
+  `${(await $.session.root()).replace(/[\\/]+$/, '')}/CLAUDE.md`
 
-const storeKey = async ($: EngineInterface) => `notes:${await $.session.id()}`
-
-async function persist($: EngineInterface): Promise<void> {
-  await $.store.set(await storeKey($), await read($, notes))
+async function load($: EngineInterface): Promise<Note[]> {
+  const path = await claudeMd($)
+  if (!(await $.fs.exists(path))) return []
+  return parseNotes(await $.fs.read(path))
 }
 
-/** Notes restored at session.start; anything unreadable starts empty. */
-export function restoreNotes(saved: unknown): Note[] {
-  if (!Array.isArray(saved)) return []
+// Writes from this process are serialized; another session writing the same
+// project at the same instant can still win the last write. CLAUDE.md stays
+// authoritative, so a restart or a second session still reads the notes.
+let queue: Promise<unknown> = Promise.resolve()
 
-  return (saved as Note[])
-    .filter(
-      note =>
-        note != null &&
-        typeof note.id === 'string' &&
-        typeof note.text === 'string' &&
-        (note.kind === 'todo' || note.kind === 'important' || note.kind === 'note'),
-    )
-    .slice(-MAX)
+function serial<T>(task: () => Promise<T>): Promise<T> {
+  const run = queue.then(task, task)
+  queue = run.catch(() => undefined)
+  return run
+}
+
+/** Read-merge-write against CLAUDE.md, then refresh the in-memory view. */
+async function mutate(
+  $: EngineInterface,
+  change: (list: Note[]) => Note[],
+): Promise<Note[]> {
+  return serial(async () => {
+    const path = await claudeMd($)
+    const current = (await $.fs.exists(path)) ? await $.fs.read(path) : ''
+    const next = change(parseNotes(current)).slice(-MAX_NOTES)
+    const text = applyNotes(current, next)
+
+    if (text !== current) await $.fs.write(path, text)
+    await update($, notes, () => next)
+    return next
+  })
 }
 
 async function record($: EngineInterface, found: Draft[]): Promise<number> {
   if (found.length === 0) return 0
 
   let added = 0
-  await update($, notes, list => {
+  await mutate($, list => {
     const seen = new Set(list.map(note => note.text.toLowerCase()))
     const fresh: Note[] = []
 
@@ -54,38 +67,33 @@ async function record($: EngineInterface, found: Draft[]): Promise<number> {
       const key = draft.text.toLowerCase()
       if (seen.has(key)) continue
       seen.add(key)
-      fresh.push({ id: makeId(), kind: draft.kind, text: draft.text })
+      fresh.push({ id: idFor(draft), kind: draft.kind, text: draft.text })
     }
 
     added = fresh.length
-    return fresh.length === 0 ? list : [...list, ...fresh].slice(-MAX)
+    return fresh.length === 0 ? list : [...list, ...fresh]
   })
 
-  if (added > 0) await persist($)
   return added
 }
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    const saved = await $.store.get(await storeKey($))
-    // Always replace the in-memory list, never only when a store entry exists:
-    // a fresh or cleared session must not inherit notes from the previous one.
-    await update($, notes, () => restoreNotes(saved))
+    // CLAUDE.md is the source of truth, shared by every session in the project.
+    let saved: Note[] = []
+    try {
+      saved = await load($)
+    } catch {
+      // An unreadable CLAUDE.md starts empty; recording retries on the next note.
+    }
+    await update($, notes, () => saved)
 
     await $.command.register({
       name: 'todo',
-      description: '查看、添加或清理本会话自动记录的 TODO / 重要信息',
+      description: '查看、添加或清理项目 CLAUDE.md 中自动记录的 TODO / 重要信息',
       argumentHint: '[open | close | clear | done <n> | add <text> | important <text>]',
     })
 
-    return next(e)
-  })
-
-  on('session.end', async ($, e, next) => {
-    if (e.reason === 'clear') {
-      await update($, notes, () => [])
-      await $.store.delete(`notes:${e.sessionId}`)
-    }
     return next(e)
   })
 
@@ -94,7 +102,7 @@ export const register: Register = on => {
       try {
         await record($, extractNotes(e.text))
       } catch {
-        // Recording is a side effect; a store failure must never block the prompt.
+        // Recording is a side effect; a file write must never block the prompt.
       }
     }
 
@@ -103,7 +111,14 @@ export const register: Register = on => {
 
   on('turn.complete', async ($, e, next) => {
     const ran = await next(e)
-    if (e.agentId === undefined) await record($, extractNotes(ran.text))
+
+    if (e.agentId === undefined) {
+      try {
+        await record($, extractNotes(ran.text))
+      } catch {
+        // A failed write leaves CLAUDE.md as it was; the turn still completes.
+      }
+    }
 
     return ran
   })
@@ -138,20 +153,25 @@ export const register: Register = on => {
     }
 
     if (args === 'clear') {
-      await update($, notes, () => [])
-      await persist($)
-      return { text: '已清空本会话的记录。' }
+      await mutate($, () => [])
+      return { text: '已清空项目 CLAUDE.md 中的记录。' }
     }
 
     const done = /^(?:done|rm|完成)\s+(\d+)$/.exec(args)
     if (done !== null) {
       const index = Number(done[1])
-      const note = list[index - 1]
-      if (note === undefined) return { text: `没有第 ${index} 条记录。` }
+      const removed: { note?: Note } = {}
 
-      await update($, notes, current => current.filter((_, i) => i !== index - 1))
-      await persist($)
-      return { text: `已移除 #${index}: ${note.text}` }
+      await mutate($, current => {
+        removed.note = current[index - 1]
+        return removed.note === undefined
+          ? current
+          : current.filter((_, i) => i !== index - 1)
+      })
+
+      return removed.note === undefined
+        ? { text: `没有第 ${index} 条记录。` }
+        : { text: `已从 CLAUDE.md 移除 #${index}: ${removed.note.text}` }
     }
 
     const add = /^(add|important)\s+(.+)$/i.exec(args)
@@ -163,7 +183,7 @@ export const register: Register = on => {
     }
 
     if (list.length === 0) {
-      return { text: '本会话还没有记录。用 `/todo add <内容>` 手动添加。' }
+      return { text: 'CLAUDE.md 里还没有记录。用 `/todo add <内容>` 手动添加。' }
     }
 
     return {
@@ -195,10 +215,9 @@ export const register: Register = on => {
               label=" ×"
               plain
               onPress={async () => {
-                await update($, notes, current =>
+                await mutate($, current =>
                   current.filter(item => item.id !== note.id),
                 )
-                await persist($)
               }}
             />
           </Box>
