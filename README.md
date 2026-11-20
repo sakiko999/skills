@@ -26,9 +26,9 @@ Codex discovers the skill from its YAML frontmatter. Invoke it explicitly with
 ### [mdm-download](skills/mdm-download/SKILL.md)
 
 Download files, videos, playlists, galleries and torrents with
-[Mister Download Manager](https://misterdownloadmanager.com/), and manage the running
-app's downloads through its MCP server or command line.
+[Mister Download Manager](https://misterdownloadmanager.com/) from its CLI. MCP is
+documented as an optional setup for controlling a running app.
 
-- `SKILL.md`: routing, download and management workflow, safety rules.
-- `references/setup.md`: locating MDM, enabling the automation API, MCP setup, troubleshooting.
-- `references/cli.md`: app handoff vs standalone download, options, JSON output.
+- `SKILL.md`: CLI-first routing, app handoff, optional MCP, safety rules.
+- `references/setup.md`: locating MDM, optional automation API and MCP setup, troubleshooting.
+- `references/cli.md`: standalone downloads, helper commands, app handoff, options, JSON output.

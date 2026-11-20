@@ -1,5 +1,9 @@
 # MDM setup and discovery
 
+The CLI is the default interface and works without the desktop app running. MCP is
+optional and exists to control an already running app; do not configure it unless
+the user asks for that mode.
+
 ## Locate the programs
 
 `misterdownloadmanager-mcp` and `misterdownloadmanager-cli` sit next to the app:
@@ -17,9 +21,13 @@ Windows executables end in `.exe`. Search the usual install locations and `PATH`
 before concluding MDM is absent. A portable build's MCP server finds that portable
 app from its own folder.
 
-## Turn on the automation API
+Only `misterdownloadmanager-cli` is required for standalone downloads. The other
+programs are needed only for app handoff or MCP.
 
-The API is off by default and is needed to list or act on the running app's downloads:
+## Optional: turn on the automation API
+
+The API is off by default and is needed to list or act on the running app's downloads
+through MCP or the CLI management commands:
 
 ```text
 misterdownloadmanager-cli api on
@@ -27,10 +35,12 @@ misterdownloadmanager-cli api on
 
 MDM must be running. It stays on across restarts; `api off` disables it. Adding a
 download through the app's command line or MCP `add_download` does not require the API.
+Standalone `misterdownloadmanager-cli get` never requires it.
 
-## Configure the MCP server in Codex
+## Optional: configure the MCP server in Codex
 
-Register the server once, using the absolute path found above, then restart Codex:
+Only do this when the user wants assistant-driven control of a running app. Register
+the server once, using the absolute path found above, then restart Codex:
 
 ```text
 codex mcp add misterdownloadmanager -- "<path to misterdownloadmanager-mcp>"
@@ -48,6 +58,9 @@ clients, add the same stdio command with no arguments to their MCP configuration
 
 This changes the user's Codex configuration. Do it when the user asks to set MDM up
 for this assistant, not as a silent side effect of an ordinary download request.
+
+MCP cannot start MDM itself. If MDM is not running, the MCP call fails with "Mister
+Download Manager isn't running"; start the app first.
 
 ## Troubleshooting
 
