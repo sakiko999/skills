@@ -1,0 +1,4 @@
+interface:
+  display_name: "MDM Download"
+  short_description: "Download and manage files with Mister Download Manager"
+  default_prompt: "Use $mdm-download to download a file with Mister Download Manager."

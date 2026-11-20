@@ -1,0 +1,17 @@
+# Local Codex state
+.codex/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Downloaded test artifacts
+*.mdm.json
+*.part
